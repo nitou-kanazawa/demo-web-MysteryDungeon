@@ -25,12 +25,20 @@ import { FloorBuilder } from './FloorBuilder';
 import { GameState } from './GameState';
 import { MessageLog } from './MessageLog';
 import { findItemDropTile } from './Placement';
+import { ShopService } from './ShopService';
+import { Codex } from './Codex';
+import type { ItemSnapshot } from '../item/ItemSnapshot';
 
 export interface SessionOptions {
   readonly floorConfig?: FloorConfig;
   readonly generatorConfig?: GeneratorConfig;
   /** 初期所持品（定義ID）。テスト・デバッグ用 */
   readonly startingItems?: readonly string[];
+  /** 拠点から持ち込むアイテム（修正値・中身を含む） */
+  readonly startingInventory?: readonly ItemSnapshot[];
+  readonly startingGold?: number;
+  /** 図鑑（拠点と共有）。省略時はセッション内だけの図鑑 */
+  readonly codex?: Codex;
 }
 
 /**
@@ -41,9 +49,13 @@ export interface SessionOptions {
 export class GameSession {
   readonly state: GameState;
   readonly log = new MessageLog();
-  readonly recipes = new RecipeBook(RECIPES);
+  readonly codex: Codex;
+  readonly recipes: RecipeBook;
   readonly pots: PotService;
+  readonly shops: ShopService;
   readonly history: Command[] = [];
+  private readonly startingInventory: readonly ItemSnapshot[];
+  private readonly startingGold: number;
 
   private readonly rng: IRng;
   private readonly ids = new IdGenerator();
@@ -61,17 +73,24 @@ export class GameSession {
   ) {
     this.rng = new SeededRng(seed);
     this.config = options.floorConfig ?? DEFAULT_FLOOR_CONFIG;
+    this.codex = options.codex ?? new Codex();
+    this.recipes = new RecipeBook(RECIPES, this.codex.recipes);
     this.factory = new ItemFactory(this.ids, ITEM_MAP);
+    this.shops = new ShopService(this.factory, this.ids, this.log);
     const generator = new DungeonGenerator(options.generatorConfig ?? DEFAULT_GENERATOR_CONFIG);
-    this.floors = new FloorBuilder(generator, MONSTER_DEFS, ITEM_SPAWN_TABLE, this.factory, this.ids, this.config);
+    this.floors = new FloorBuilder(generator, MONSTER_DEFS, ITEM_SPAWN_TABLE, this.factory, this.ids, this.config, this.shops);
     const changePool = ITEM_DEFS.filter((d) => d.category !== 'pot' && d.category !== 'gold');
     this.pots = new PotService(this.factory, this.recipes, changePool);
 
     const player = new Player(this.ids.generate(), { x: 0, y: 0 });
     this.state = new GameState(generator.generate(new SeededRng(seed ^ 0x9e3779b9)), player);
-    for (const id of options.startingItems ?? []) player.inventory.add(this.factory.create(id));
+    this.startingInventory = options.startingInventory ?? [];
+    this.startingGold = options.startingGold ?? 0;
+    for (const id of options.startingItems ?? []) this.addStartingItem(this.factory.create(id));
+    for (const snap of this.startingInventory) this.addStartingItem(this.factory.restore(snap));
+    player.gold = this.startingGold;
 
-    this.actions = new ActionExecutor(this.state, this.rng, this.log, this.ids, this.config);
+    this.actions = new ActionExecutor(this.state, this.rng, this.log, this.ids, this.config, this.shops);
     this.effects = new EffectResolver(this.state, this.rng, this.log, this.actions);
 
     this.floors.build(this.state, this.rng);
@@ -80,13 +99,45 @@ export class GameSession {
 
   /** seed とコマンド列から同じ状態を再構築する */
   static replay(replay: Replay, options: SessionOptions = {}): GameSession {
-    const session = new GameSession(replay.seed, options);
+    const merged: SessionOptions = {
+      ...options,
+      ...(replay.startingInventory ? { startingInventory: replay.startingInventory } : {}),
+      ...(replay.startingGold !== undefined ? { startingGold: replay.startingGold } : {}),
+    };
+    const session = new GameSession(replay.seed, merged);
     for (const cmd of replay.commands) session.execute(cmd);
     return session;
   }
 
   toReplay(): Replay {
-    return { seed: this.seed, commands: [...this.history] };
+    return {
+      seed: this.seed,
+      commands: [...this.history],
+      startingInventory: [...this.startingInventory],
+      startingGold: this.startingGold,
+    };
+  }
+
+  /** 現在の所持品をスナップショット化（拠点への持ち帰り用） */
+  inventorySnapshot(): ItemSnapshot[] {
+    return this.state.player.inventory.items.map((i) => ItemFactory.snapshot(i));
+  }
+
+  private addStartingItem(item: ItemInstance): void {
+    this.state.player.inventory.add(item);
+    this.codex.obtainItem(item.def.id);
+    for (const c of item.contents) this.codex.obtainItem(c.def.id);
+  }
+
+  private recordSightings(): void {
+    const s = this.state;
+    for (const m of s.monsters) {
+      if (s.visibility.isVisible(m.pos) && this.codex.seeMonster(m.definition.id)) {
+        this.log.push(`図鑑に${m.name}を登録した。`);
+      }
+    }
+    const keeper = s.shop?.keeper;
+    if (keeper && s.visibility.isVisible(keeper.pos)) this.codex.seeMonster(keeper.definition.id);
   }
 
   get maxFloor(): number {
@@ -100,6 +151,7 @@ export class GameSession {
     if (result.message) this.log.push(result.message);
     if (result.consumedTurn && this.state.status === 'playing') this.runNpcPhaseAndEndTurn();
     this.state.visibility.update(this.state.player.pos);
+    this.recordSightings();
     return result;
   }
 
@@ -129,6 +181,8 @@ export class GameSession {
         return this.cmdDrop(cmd.index);
       case 'throw':
         return this.cmdThrow(cmd.index);
+      case 'sell':
+        return this.cmdSell(cmd.index);
       case 'potInsert':
         return this.cmdPotInsert(cmd.potIndex, cmd.itemIndex);
       case 'potTakeOut':
@@ -146,23 +200,30 @@ export class GameSession {
     const to = addVec(p.pos, DIR_VEC[dir]);
     const other = this.state.actorAt(to);
     if (other) {
+      if (other.faction === 'neutral') {
+        const r = this.shops.talk(this.state);
+        return { consumedTurn: true, message: r.message };
+      }
       if (other.faction === 'enemy' || p.hasStatus('confusion')) {
         this.actions.attack(p, other);
         return { consumedTurn: true };
       }
       // 仲間とは位置を入れ替える
+      const from = p.pos;
       other.pos = p.pos;
       p.pos = to;
-      this.afterPlayerMoved();
+      this.afterPlayerMoved(from);
       return { consumedTurn: true };
     }
+    const from = p.pos;
     p.pos = to;
-    this.afterPlayerMoved();
+    this.afterPlayerMoved(from);
     return { consumedTurn: true };
   }
 
-  private afterPlayerMoved(): void {
+  private afterPlayerMoved(from: Vec2): void {
     const p = this.state.player;
+    this.shops.onPlayerMoved(this.state, from);
     const item = this.state.itemAt(p.pos);
     if (item) this.pickupAt(p.pos, item);
     if (this.state.map.get(p.pos) === TileType.Stairs) this.log.push('階段がある。（Enterで降りる）');
@@ -184,6 +245,8 @@ export class GameSession {
     this.state.removeItemAt(pos);
     p.inventory.add(item);
     this.log.push(`${item.displayName}を拾った。`);
+    this.shops.onItemPicked(item);
+    if (this.codex.obtainItem(item.def.id)) this.log.push(`図鑑に${item.def.name}を登録した。`);
     return true;
   }
 
@@ -197,6 +260,7 @@ export class GameSession {
   private cmdDescend(): CommandResult {
     const p = this.state.player;
     if (this.state.map.get(p.pos) !== TileType.Stairs) return { consumedTurn: false, message: 'ここに階段はない。' };
+    this.shops.settleOnLeave(this.state);
     if (this.state.floor >= this.config.maxFloor) {
       this.state.status = 'won';
       this.log.push('最深部の階段を降りた。ダンジョン踏破！');
@@ -229,7 +293,15 @@ export class GameSession {
     this.log.push(`${item.def.name}を${verb}。`);
     p.inventory.remove(item);
     this.effects.applySelf(effect);
+    if (this.state.status === 'escaped') this.shops.settleOnLeave(this.state);
     return { consumedTurn: true };
+  }
+
+  private cmdSell(index: number): CommandResult {
+    const item = this.itemAt(index);
+    if (!item) return { consumedTurn: false, message: 'そのアイテムはない。' };
+    const r = this.shops.sell(this.state, item);
+    return { consumedTurn: r.ok, message: r.message };
   }
 
   private cmdEquip(index: number): CommandResult {
@@ -260,6 +332,7 @@ export class GameSession {
     this.unequipIfNeeded(item);
     p.inventory.remove(item);
     this.state.placeItem(tile, item);
+    this.shops.onItemDropped(this.state, item, tile);
     return { consumedTurn: true, message: `${item.displayName}を置いた。` };
   }
 
@@ -384,7 +457,10 @@ export class GameSession {
 
     for (const item of p.inventory.items) {
       const done = this.pots.tick(item);
-      if (done) this.log.push(`錬金の壺から${done.displayName}ができた！`);
+      if (done) {
+        this.log.push(`錬金の壺から${done.displayName}ができた！`);
+        this.codex.obtainItem(done.def.id);
+      }
     }
 
     if (s.turn % this.config.respawnInterval === 0 && s.monsters.length < 10) {

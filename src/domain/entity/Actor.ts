@@ -1,7 +1,7 @@
 import type { Vec2 } from '../core/Vec2';
 import type { StatusKind } from './StatusEffect';
 
-export type Faction = 'player' | 'ally' | 'enemy';
+export type Faction = 'player' | 'ally' | 'enemy' | 'neutral';
 
 /** 盤上で行動する存在の基底クラス。攻撃力・防御力の算出は派生クラスに委ねる */
 export abstract class Actor {

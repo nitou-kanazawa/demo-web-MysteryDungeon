@@ -53,9 +53,14 @@ export class HudRenderer {
       g.fillStyle = '#c084fc';
       g.fillText(st, 770, y);
     }
+    const debt = session.shops.debtOf(p);
+    if (debt > 0) {
+      g.fillStyle = '#f97316';
+      g.fillText(`未払い ${debt}G`, 850, y);
+    }
     g.textAlign = 'right';
     g.fillStyle = '#6b7280';
-    g.fillText('[?] 操作方法  [I] 持ち物', width - 12, y);
+    g.fillText('[?] 操作方法  [I] 持ち物  [M] 図鑑', width - 12, y);
   }
 
   drawLog(g: CanvasRenderingContext2D, session: GameSession, top: number, width: number): void {

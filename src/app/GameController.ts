@@ -1,7 +1,7 @@
 import type { Direction } from '../domain/core/Vec2';
-import type { Command } from '../domain/game/Command';
-import { GameSession } from '../domain/game/GameSession';
+import type { GameSession } from '../domain/game/GameSession';
 import { directionFromKey } from './input/KeyMap';
+import { handleCodexKey, newCodexView } from './ui/CodexView';
 import { buildItemActions } from './ui/ItemActionMenu';
 import type { UiMode } from './ui/UiState';
 
@@ -10,36 +10,34 @@ import type { UiMode } from './ui/UiState';
  * 描画は行わず、「状態が変わったか」だけを返す。
  */
 export class GameController {
-  session: GameSession;
   mode: UiMode = { kind: 'explore' };
+  /** 終了画面でキーが押された（拠点へ戻る） */
+  exitRequested = false;
 
-  constructor(seed: number) {
-    this.session = new GameSession(seed);
-  }
-
-  restart(seed: number): void {
-    this.session = new GameSession(seed);
-    this.mode = { kind: 'explore' };
-  }
-
-  /** リプレイ JSON を読み込んで同じ状態を再現する */
-  loadReplay(json: string): void {
-    const replay = JSON.parse(json) as { seed: number; commands: Command[] };
-    this.session = GameSession.replay(replay);
-    this.mode = { kind: 'explore' };
-  }
+  constructor(readonly session: GameSession) {}
 
   exportReplay(): string {
     return JSON.stringify(this.session.toReplay());
   }
 
+  /** 店の中で店主が健在なら売れる */
+  get canSell(): boolean {
+    const st = this.session.state;
+    return st.shop?.keeper !== undefined && this.session.shops.isInShop(st, st.player.pos);
+  }
+
   handleKey(e: KeyboardEvent): boolean {
     const status = this.session.state.status;
     if (status !== 'playing') {
-      if (e.code === 'KeyR') this.restart(Date.now() >>> 0);
+      this.exitRequested = true;
       return true;
     }
     switch (this.mode.kind) {
+      case 'codex': {
+        const r = handleCodexKey(e, this.mode.view);
+        if (r === 'close') this.mode = { kind: 'explore' };
+        return r !== false;
+      }
       case 'explore':
         return this.handleExplore(e);
       case 'inventory':
@@ -81,6 +79,9 @@ export class GameController {
       case 'Slash':
       case 'F1':
         this.mode = { kind: 'help' };
+        return true;
+      case 'KeyM':
+        this.mode = { kind: 'codex', view: newCodexView() };
         return true;
       default:
         return false;
@@ -129,7 +130,7 @@ export class GameController {
       this.mode = { kind: 'inventory', cursor: 0 };
       return true;
     }
-    const actions = buildItemActions(item, player);
+    const actions = buildItemActions(item, player, this.canSell);
     if (this.isCancel(e)) {
       this.mode = { kind: 'inventory', cursor: mode.itemIndex };
       return true;
@@ -154,6 +155,9 @@ export class GameController {
         break;
       case 'drop':
         this.session.execute({ type: 'drop', index: i });
+        break;
+      case 'sell':
+        this.session.execute({ type: 'sell', index: i });
         break;
       case 'potIn':
         this.mode = { kind: 'potInsertSelect', potIndex: i, cursor: 0 };

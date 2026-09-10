@@ -10,6 +10,8 @@ import { HIT_CHANCE, calcDamage } from './Combat';
 import type { GameState } from './GameState';
 import type { MessageLog } from './MessageLog';
 import { findFreeTileNear } from './Placement';
+import { Shopkeeper } from '../entity/Shopkeeper';
+import type { ShopService } from './ShopService';
 
 /**
  * 「移動」「攻撃」「ダメージ」「撃破処理」など、プレイヤーと AI が共有する
@@ -22,6 +24,7 @@ export class ActionExecutor {
     private readonly log: MessageLog,
     private readonly ids: IdGenerator,
     private readonly config: FloorConfig,
+    private readonly shops: ShopService,
   ) {}
 
   /** dir へ 1 マス移動。地形・アクターに阻まれれば false */
@@ -45,6 +48,12 @@ export class ActionExecutor {
 
   /** 固定ダメージ（杖・投擲など）。撃破処理を含む */
   dealDamage(source: Actor | undefined, target: Actor, amount: number): void {
+    if (target instanceof Shopkeeper) {
+      target.takeDamage(amount);
+      this.log.push(`${target.name}に${amount}のダメージ！`);
+      this.shops.becomeThief(this.state);
+      return;
+    }
     const dealt = target.takeDamage(amount);
     const who = source ? `${source.name}は` : '';
     this.log.push(`${who}${target.name}に${dealt}のダメージ！`);

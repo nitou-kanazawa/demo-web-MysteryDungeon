@@ -4,6 +4,7 @@ import type { ItemInstance } from '../../domain/item/ItemInstance';
 import { buildItemActions } from '../ui/ItemActionMenu';
 import type { UiMode } from '../ui/UiState';
 import { FONT } from './RenderConfig';
+import { drawPanel } from './PanelStyle';
 
 /** 持ち物・壺・ヘルプ・ゲームオーバーなどのオーバーレイ描画 */
 export class MenuRenderer {
@@ -27,27 +28,14 @@ export class MenuRenderer {
         this.drawHelp(g, width, height);
         break;
       case 'explore':
+      case 'codex':
         break;
     }
     if (session.state.status !== 'playing') this.drawGameEnd(g, session, width, height);
   }
 
   private panel(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, title?: string): void {
-    g.fillStyle = 'rgba(12,9,20,0.92)';
-    g.fillRect(x, y, w, h);
-    g.strokeStyle = '#c9a961';
-    g.lineWidth = 2;
-    g.strokeRect(x + 1, y + 1, w - 2, h - 2);
-    g.strokeStyle = 'rgba(201,169,97,0.4)';
-    g.lineWidth = 1;
-    g.strokeRect(x + 5.5, y + 5.5, w - 11, h - 11);
-    if (title) {
-      g.font = `bold 15px ${FONT}`;
-      g.fillStyle = '#f5deb3';
-      g.textAlign = 'left';
-      g.textBaseline = 'top';
-      g.fillText(title, x + 16, y + 12);
-    }
+    drawPanel(g, x, y, w, h, title);
   }
 
   private drawInventory(g: CanvasRenderingContext2D, session: GameSession, cursor: number, title: string | undefined): void {
@@ -90,14 +78,17 @@ export class MenuRenderer {
   }
 
   private itemLabel(item: ItemInstance, equipped: boolean): string {
-    return `${equipped ? '[E] ' : ''}${item.displayName}`;
+    const tag = item.price !== undefined ? ` 【未払い ${item.price}G】` : '';
+    return `${equipped ? '[E] ' : ''}${item.displayName}${tag}`;
   }
 
   private drawItemActions(g: CanvasRenderingContext2D, session: GameSession, itemIndex: number, cursor: number): void {
     const p = session.state.player;
     const item = p.inventory.at(itemIndex);
     if (!item) return;
-    const actions = buildItemActions(item, p);
+    const st = session.state;
+    const canSell = st.shop?.keeper !== undefined && session.shops.isInShop(st, p.pos);
+    const actions = buildItemActions(item, p, canSell);
     const x = 440;
     const y = 60 + itemIndex * 22;
     const w = 150;
@@ -163,6 +154,10 @@ export class MenuRenderer {
       '壺        : 「入れる」で他の持ち物を選択、「出す」で中身を取り出す',
       '錬金の壺  : レシピ通りの素材を入れると、時間経過で新しいアイテムに',
       '仲間      : 倒した魔物がときどき仲間になり、追従して戦う',
+      '店        : 値札付きの品を拾って店主（ガーゴイル）にぶつかると支払い。店内では「売る」',
+      '            未払いのまま店を出ると「どろぼう」でガーゴイルが襲ってくる',
+      'リレミト  : リレミトの巻物を読むと拠点に帰還できる（持ち物は持ち帰れる）',
+      '図鑑      : M キー',
       'リプレイ  : P で記録をクリップボードへコピー、O で読み込み',
       '',
       'なにかキーを押すと閉じる',
@@ -180,7 +175,8 @@ export class MenuRenderer {
   }
 
   private drawGameEnd(g: CanvasRenderingContext2D, session: GameSession, width: number, height: number): void {
-    const won = session.state.status === 'won';
+    const status = session.state.status;
+    const won = status === 'won';
     const p = session.state.player;
     g.fillStyle = 'rgba(0,0,0,0.65)';
     g.fillRect(0, 0, width, height);
@@ -192,12 +188,12 @@ export class MenuRenderer {
     g.textAlign = 'center';
     g.textBaseline = 'top';
     g.font = `bold 28px ${FONT}`;
-    g.fillStyle = won ? '#fbbf24' : '#f85149';
-    g.fillText(won ? 'ダンジョン踏破！' : 'ヤンガスは倒れた…', x + w / 2, y + 30);
+    g.fillStyle = won ? '#fbbf24' : status === 'escaped' ? '#7dd3fc' : '#f85149';
+    g.fillText(won ? 'ダンジョン踏破！' : status === 'escaped' ? 'リレミトで脱出した！' : 'ヤンガスは倒れた…', x + w / 2, y + 30);
     g.font = `15px ${FONT}`;
     g.fillStyle = '#e8dcc0';
     g.fillText(`${session.state.floor}F  Lv ${p.level}  ${p.gold} G  ${session.state.turn} ターン`, x + w / 2, y + 85);
     g.fillStyle = '#9ca3af';
-    g.fillText('R キーで最初から', x + w / 2, y + 140);
+    g.fillText(status === 'dead' ? '持ち物とゴールドを失った… なにかキーで拠点へ' : 'なにかキーで拠点へ戻る', x + w / 2, y + 140);
   }
 }

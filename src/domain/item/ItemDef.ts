@@ -25,13 +25,16 @@ export type ItemEffect =
   | { readonly kind: 'confuseVisible'; readonly turns: number }
   | { readonly kind: 'boltParalyze'; readonly turns: number }
   | { readonly kind: 'boltKnockback' }
-  | { readonly kind: 'boltDamage'; readonly amount: number };
+  | { readonly kind: 'boltDamage'; readonly amount: number }
+  | { readonly kind: 'escape' };
 
 export interface ItemDef {
   readonly id: string;
   readonly name: string;
   readonly category: ItemCategory;
   readonly description: string;
+  /** 店での買値。売値はその半分 */
+  readonly price: number;
   /** 武器の攻撃力 */
   readonly atk?: number;
   /** 盾の防御力 */

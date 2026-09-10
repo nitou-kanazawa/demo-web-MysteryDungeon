@@ -9,6 +9,8 @@ import { DungeonGenerator } from '../map/DungeonGenerator';
 import { TileType } from '../map/Tile';
 import type { GameState } from './GameState';
 import { findFreeTileNear } from './Placement';
+import type { ShopService } from './ShopService';
+import type { Room } from '../map/Room';
 
 /** フロアの生成と初期配置（プレイヤー・仲間・敵・アイテム） */
 export class FloorBuilder {
@@ -19,6 +21,7 @@ export class FloorBuilder {
     private readonly factory: ItemFactory,
     private readonly ids: IdGenerator,
     private readonly config: FloorConfig,
+    private readonly shops: ShopService,
   ) {}
 
   build(state: GameState, rng: IRng): void {
@@ -30,6 +33,15 @@ export class FloorBuilder {
 
     for (const ally of state.allies) {
       ally.pos = findFreeTileNear(state, state.player.pos, 6) ?? state.player.pos;
+    }
+
+    const stairsRoom = map.roomAt(map.stairs);
+    if (state.floor >= 2 && rng.chance(this.config.shopChance)) {
+      const candidates = map.rooms.filter((r) => r !== startRoom && r !== stairsRoom);
+      if (candidates.length > 0) {
+        const [lo, hi] = this.config.shopItems;
+        this.shops.setup(state, rng.pick(candidates), this.itemTable, rng.int(lo, hi), rng);
+      }
     }
 
     const [mMin, mMax] = this.config.monstersPerFloor;
@@ -47,7 +59,7 @@ export class FloorBuilder {
     if (candidates.length === 0) return undefined;
     const def = rng.pick(candidates);
     const playerRoom = state.map.roomAt(state.player.pos);
-    const rooms = state.map.rooms.filter((r) => !avoidPlayerRoom || r !== playerRoom);
+    const rooms = state.map.rooms.filter((r) => (!avoidPlayerRoom || r !== playerRoom) && !this.isShopRoom(state, r));
     if (rooms.length === 0) return undefined;
     const room = rng.pick(rooms);
     for (let attempt = 0; attempt < 20; attempt++) {
@@ -64,7 +76,9 @@ export class FloorBuilder {
   private spawnItem(state: GameState, rng: IRng): void {
     const entry = this.pickWeighted(state.floor, rng);
     if (!entry) return;
-    const room = rng.pick(state.map.rooms);
+    const rooms = state.map.rooms.filter((r) => !this.isShopRoom(state, r));
+    if (rooms.length === 0) return;
+    const room = rng.pick(rooms);
     for (let attempt = 0; attempt < 20; attempt++) {
       const p = this.randomFloorIn(state, room.x, room.right, room.y, room.bottom, rng);
       if (state.itemAt(p) || state.map.get(p) === TileType.Stairs) continue;
@@ -84,6 +98,10 @@ export class FloorBuilder {
       if (r < 0) return e;
     }
     return pool[pool.length - 1];
+  }
+
+  private isShopRoom(state: GameState, room: Room): boolean {
+    return state.shop?.room === room;
   }
 
   private randomFloorIn(state: GameState, x0: number, x1: number, y0: number, y1: number, rng: IRng): Vec2 {

@@ -2,9 +2,15 @@ import type { Recipe } from './Recipe';
 
 /** レシピの検索と発見状況の管理 */
 export class RecipeBook {
-  private readonly discovered = new Set<string>();
+  private readonly discovered: Set<string>;
 
-  constructor(readonly recipes: readonly Recipe[]) {}
+  /** discovered を渡すと図鑑などと発見状況を共有できる */
+  constructor(
+    readonly recipes: readonly Recipe[],
+    discovered?: Set<string>,
+  ) {
+    this.discovered = discovered ?? new Set<string>();
+  }
 
   /** 定義IDの多重集合に完全一致するレシピを返す */
   find(defIds: readonly string[]): Recipe | undefined {

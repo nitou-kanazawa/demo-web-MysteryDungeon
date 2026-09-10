@@ -16,6 +16,7 @@ export class SpriteArt {
     if (a.faction === 'player') {
       this.drawHero(g, px, py, t);
     } else {
+      if (a.faction === 'neutral' || a.name === 'ガーゴイル') this.drawWings(g, cx, cy);
       this.drawMonster(g, a, cx, cy, t);
     }
 
@@ -41,12 +42,17 @@ export class SpriteArt {
 
   /** 主人公: 赤いバンダナの盗賊風ピクセル図案 */
   private drawHero(g: CanvasRenderingContext2D, px: number, py: number, t: number): void {
+    this.drawHeroAt(g, px + 4, py + 2, t, 1);
+  }
+
+  /** 拠点画面などで任意の位置・倍率で主人公を描く */
+  drawHeroAt(g: CanvasRenderingContext2D, x0: number, y0: number, t: number, scale: number): void {
     const bob = Math.round(Math.sin(t / 260) * 1);
-    const x = px + 4;
-    const y = py + 2 + bob;
+    const x = x0;
+    const y = y0 + bob;
     const P = (col: string, rx: number, ry: number, w: number, h: number): void => {
       g.fillStyle = col;
-      g.fillRect(x + rx, y + ry, w, h);
+      g.fillRect(x + rx * scale, y + ry * scale, w * scale, h * scale);
     };
     P('#c0392b', 3, 0, 10, 4); // バンダナ
     P('#e74c3c', 12, 1, 4, 2); // バンダナの結び目
@@ -86,6 +92,23 @@ export class SpriteArt {
     g.textBaseline = 'middle';
     g.fillStyle = 'rgba(255,255,255,0.85)';
     g.fillText(a.glyph, cx, cy + 6);
+  }
+
+  /** ガーゴイルの石の翼 */
+  private drawWings(g: CanvasRenderingContext2D, cx: number, cy: number): void {
+    g.fillStyle = '#5b6478';
+    g.beginPath();
+    g.moveTo(cx - 6, cy);
+    g.lineTo(cx - 14, cy - 10);
+    g.lineTo(cx - 12, cy + 4);
+    g.closePath();
+    g.fill();
+    g.beginPath();
+    g.moveTo(cx + 6, cy);
+    g.lineTo(cx + 14, cy - 10);
+    g.lineTo(cx + 12, cy + 4);
+    g.closePath();
+    g.fill();
   }
 
   private drawStatusMark(g: CanvasRenderingContext2D, px: number, py: number, mark: string, color: string): void {

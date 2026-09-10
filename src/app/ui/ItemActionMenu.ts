@@ -3,7 +3,7 @@ import type { ItemInstance } from '../../domain/item/ItemInstance';
 import type { ItemAction } from './UiState';
 
 /** アイテム種別と状態に応じたアクション一覧を組み立てる */
-export function buildItemActions(item: ItemInstance, player: Player): ItemAction[] {
+export function buildItemActions(item: ItemInstance, player: Player, canSell = false): ItemAction[] {
   const actions: ItemAction[] = [];
   switch (item.def.category) {
     case 'food':
@@ -30,5 +30,6 @@ export function buildItemActions(item: ItemInstance, player: Player): ItemAction
   }
   actions.push({ id: 'throw', label: '投げる' });
   actions.push({ id: 'drop', label: '置く' });
+  if (canSell && item.price === undefined) actions.push({ id: 'sell', label: '売る' });
   return actions;
 }

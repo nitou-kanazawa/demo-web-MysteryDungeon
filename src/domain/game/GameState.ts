@@ -6,8 +6,16 @@ import type { Player } from '../entity/Player';
 import type { ItemInstance } from '../item/ItemInstance';
 import type { DungeonMap } from '../map/DungeonMap';
 import { Visibility } from '../map/Visibility';
+import type { Room } from '../map/Room';
+import type { Shopkeeper } from '../entity/Shopkeeper';
 
-export type GameStatus = 'playing' | 'dead' | 'won';
+/** フロアの店。keeper が undefined なら店主は敵化済み */
+export interface ShopState {
+  readonly room: Room;
+  keeper: Shopkeeper | undefined;
+}
+
+export type GameStatus = 'playing' | 'dead' | 'won' | 'escaped';
 
 /** 1プレイの可変状態をまとめたコンテナ。ロジックは持たない */
 export class GameState {
@@ -18,6 +26,7 @@ export class GameState {
   visibility: Visibility;
   monsters: Monster[] = [];
   allies: Ally[] = [];
+  shop: ShopState | undefined;
   private readonly ground = new Map<string, ItemInstance>();
 
   constructor(
@@ -32,15 +41,19 @@ export class GameState {
     this.map = map;
     this.visibility = new Visibility(map);
     this.monsters = [];
+    this.shop = undefined;
     this.ground.clear();
   }
 
   get actors(): Actor[] {
-    return [this.player, ...this.allies, ...this.monsters];
+    const keeper = this.shop?.keeper;
+    return keeper ? [this.player, ...this.allies, ...this.monsters, keeper] : [this.player, ...this.allies, ...this.monsters];
   }
 
   actorAt(p: Vec2): Actor | undefined {
     if (this.player.isAlive && this.player.pos.x === p.x && this.player.pos.y === p.y) return this.player;
+    const keeper = this.shop?.keeper;
+    if (keeper && keeper.isAlive && keeper.pos.x === p.x && keeper.pos.y === p.y) return keeper;
     return (
       this.allies.find((a) => a.isAlive && a.pos.x === p.x && a.pos.y === p.y) ??
       this.monsters.find((m) => m.isAlive && m.pos.x === p.x && m.pos.y === p.y)

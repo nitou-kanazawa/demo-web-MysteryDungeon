@@ -79,6 +79,10 @@ export class EffectResolver {
         this.log.push(n > 0 ? '周囲の敵が混乱した！' : '何も起こらなかった。');
         return true;
       }
+      case 'escape':
+        this.state.status = 'escaped';
+        this.log.push('リレミト！ 光に包まれてダンジョンから脱出した。');
+        return true;
       default:
         this.log.push('何も起こらなかった。');
         return false;

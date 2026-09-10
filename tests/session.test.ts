@@ -7,6 +7,7 @@ import { Monster } from '../src/domain/entity/Monster';
 import { MONSTER_MAP } from '../src/domain/data/monsters';
 import { findFreeTileNear } from '../src/domain/game/Placement';
 import { TileType } from '../src/domain/map/Tile';
+import { DEFAULT_FLOOR_CONFIG } from '../src/domain/data/spawnTables';
 
 function invariants(s: GameSession): void {
   const st = s.state;
@@ -174,13 +175,5 @@ describe('GameSession', () => {
 });
 
 function s0Config() {
-  return {
-    maxFloor: 10,
-    monstersPerFloor: [4, 7] as const,
-    itemsPerFloor: [5, 8] as const,
-    hungerInterval: 10,
-    regenInterval: 6,
-    maxAllies: 2,
-    respawnInterval: 40,
-  };
+  return DEFAULT_FLOOR_CONFIG;
 }

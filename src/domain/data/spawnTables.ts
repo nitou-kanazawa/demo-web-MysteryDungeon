@@ -20,6 +20,7 @@ export const ITEM_SPAWN_TABLE: readonly ItemSpawnEntry[] = [
   { defId: 'scroll_light', weight: 5, minFloor: 1, maxFloor: 10 },
   { defId: 'scroll_warp', weight: 4, minFloor: 1, maxFloor: 10 },
   { defId: 'scroll_confuse', weight: 4, minFloor: 2, maxFloor: 10 },
+  { defId: 'scroll_escape', weight: 3, minFloor: 1, maxFloor: 10 },
   { defId: 'staff_paralyze', weight: 3, minFloor: 2, maxFloor: 10 },
   { defId: 'staff_blow', weight: 3, minFloor: 2, maxFloor: 10 },
   { defId: 'staff_thunder', weight: 2, minFloor: 4, maxFloor: 10 },
@@ -45,6 +46,10 @@ export interface FloorConfig {
   readonly maxAllies: number;
   /** モンスターの追加湧き間隔（ターン） */
   readonly respawnInterval: number;
+  /** 店が生成される確率（2F 以降） */
+  readonly shopChance: number;
+  /** 店の商品数 */
+  readonly shopItems: readonly [number, number];
 }
 
 export const DEFAULT_FLOOR_CONFIG: FloorConfig = {
@@ -55,4 +60,6 @@ export const DEFAULT_FLOOR_CONFIG: FloorConfig = {
   regenInterval: 6,
   maxAllies: 2,
   respawnInterval: 40,
+  shopChance: 0.35,
+  shopItems: [3, 6],
 };

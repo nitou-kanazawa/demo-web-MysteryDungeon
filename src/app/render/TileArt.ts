@@ -1,6 +1,7 @@
 import type { DungeonMap } from '../../domain/map/DungeonMap';
 import { TileType } from '../../domain/map/Tile';
 import { TILE, hash2 } from './RenderConfig';
+import type { Room } from '../../domain/map/Room';
 
 /**
  * 地形の見た目をオフスクリーンに一度だけ描画してキャッシュする。
@@ -10,7 +11,7 @@ export class TileArt {
   private cache: HTMLCanvasElement | undefined;
   private cachedMap: DungeonMap | undefined;
 
-  render(map: DungeonMap): HTMLCanvasElement {
+  render(map: DungeonMap, shopRoom?: Room): HTMLCanvasElement {
     if (this.cache && this.cachedMap === map) return this.cache;
     const c = document.createElement('canvas');
     c.width = map.width * TILE;
@@ -20,6 +21,7 @@ export class TileArt {
     for (let y = 0; y < map.height; y++) {
       for (let x = 0; x < map.width; x++) this.drawTile(g, map, x, y);
     }
+    if (shopRoom) this.drawRug(g, shopRoom);
     this.cache = c;
     this.cachedMap = map;
     return c;
@@ -122,6 +124,25 @@ export class TileArt {
     for (let i = 0; i < 3; i++) {
       g.fillStyle = `rgba(20,14,10,${0.25 + hash2(x, y, 11 + i) * 0.3})`;
       g.fillRect(px + hash2(x, y, 20 + i) * 20, py + hash2(x, y, 30 + i) * 20, 3, 2);
+    }
+  }
+
+  /** 店の部屋: 赤い絨毯と金の縁取り */
+  private drawRug(g: CanvasRenderingContext2D, room: Room): void {
+    const x = room.x * TILE;
+    const y = room.y * TILE;
+    const w = room.w * TILE;
+    const h = room.h * TILE;
+    g.fillStyle = 'rgba(120,20,30,0.55)';
+    g.fillRect(x, y, w, h);
+    g.strokeStyle = 'rgba(220,180,80,0.7)';
+    g.lineWidth = 2;
+    g.strokeRect(x + 3, y + 3, w - 6, h - 6);
+    g.fillStyle = 'rgba(0,0,0,0.12)';
+    for (let ty = room.y; ty <= room.bottom; ty++) {
+      for (let tx = room.x; tx <= room.right; tx++) {
+        if ((tx + ty) % 2 === 0) g.fillRect(tx * TILE + 6, ty * TILE + 6, TILE - 12, TILE - 12);
+      }
     }
   }
 

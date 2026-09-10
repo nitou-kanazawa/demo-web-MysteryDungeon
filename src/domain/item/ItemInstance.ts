@@ -15,6 +15,8 @@ export class ItemInstance {
   /** 壺の中身 */
   readonly contents: ItemInstance[] = [];
   brewing: Brewing | undefined;
+  /** 店の値札。未払いの商品にも付いたまま */
+  price: number | undefined;
 
   constructor(
     readonly uid: number,

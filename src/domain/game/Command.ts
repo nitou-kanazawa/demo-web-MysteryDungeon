@@ -15,6 +15,7 @@ export type Command =
   | { readonly type: 'unequip'; readonly index: number }
   | { readonly type: 'drop'; readonly index: number }
   | { readonly type: 'throw'; readonly index: number }
+  | { readonly type: 'sell'; readonly index: number }
   | { readonly type: 'potInsert'; readonly potIndex: number; readonly itemIndex: number }
   | { readonly type: 'potTakeOut'; readonly potIndex: number; readonly contentIndex: number };
 
@@ -25,8 +26,13 @@ export interface CommandResult {
   readonly message?: string;
 }
 
-/** リプレイ用の記録。seed と commands で決定論的に再現できる */
+import type { ItemSnapshot } from '../item/ItemSnapshot';
+
+/** リプレイ用の記録。seed + 初期所持品 + commands で決定論的に再現できる */
 export interface Replay {
   readonly seed: number;
   readonly commands: Command[];
+  /** 出撃時に持ち込んだアイテム（拠点からの持ち込み） */
+  readonly startingInventory?: readonly ItemSnapshot[];
+  readonly startingGold?: number;
 }

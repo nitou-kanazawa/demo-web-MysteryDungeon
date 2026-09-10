@@ -12,4 +12,10 @@ export const MONSTER_DEFS: readonly MonsterDef[] = [
   { id: 'dragon', name: 'ドラゴン', glyph: '竜', color: '#FF5533', hp: 55, atk: 18, def: 9, exp: 50, minFloor: 9, maxFloor: 10, speed: 1, recruitChance: 0.03 },
 ];
 
-export const MONSTER_MAP: ReadonlyMap<string, MonsterDef> = new Map(MONSTER_DEFS.map((m) => [m.id, m]));
+/** ガーゴイル（店主）。通常は出現テーブルに含まれず、どろぼうをすると敵になる */
+export const GARGOYLE_DEF: MonsterDef = { id: 'gargoyle', name: 'ガーゴイル', glyph: 'ガ', color: '#8b9bb4', hp: 120, atk: 32, def: 18, exp: 200, minFloor: 0, maxFloor: 0, speed: 2, recruitChance: 0 };
+
+/** 図鑑に載る全モンスター（店主を含む） */
+export const ALL_MONSTER_DEFS: readonly MonsterDef[] = [...MONSTER_DEFS, GARGOYLE_DEF];
+
+export const MONSTER_MAP: ReadonlyMap<string, MonsterDef> = new Map(ALL_MONSTER_DEFS.map((m) => [m.id, m]));
