@@ -1,0 +1,642 @@
+{
+ "replay": {
+  "seed": 20260910,
+  "commands": [
+   {
+    "type": "equip",
+    "index": 0
+   },
+   {
+    "type": "potInsert",
+    "potIndex": 2,
+    "itemIndex": 1
+   },
+   {
+    "type": "potInsert",
+    "potIndex": 1,
+    "itemIndex": 2
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "SW"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "SE"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "W"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "wait"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "E"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "NE"
+   },
+   {
+    "type": "move",
+    "dir": "S"
+   },
+   {
+    "type": "move",
+    "dir": "N"
+   },
+   {
+    "type": "move",
+    "dir": "NW"
+   }
+  ]
+ },
+ "options": {
+  "startingItems": [
+   "copper_sword",
+   "herb",
+   "pot_alchemy",
+   "herb"
+  ]
+ },
+ "expected": {
+  "turn": 132,
+  "floor": 1,
+  "status": "playing",
+  "pos": {
+   "x": 11,
+   "y": 16
+  },
+  "hp": 20,
+  "level": 1,
+  "gold": 0,
+  "hunger": 87,
+  "inventory": [
+   "どうのつるぎ",
+   "錬金の壺[1/3]",
+   "保存の壺[0/4]"
+  ],
+  "allies": 0,
+  "logLength": 6,
+  "lastLog": [
+   "錬金が始まった！ 新しいレシピを発見した：じょうやくそう",
+   "錬金の壺からじょうやくそうができた！",
+   "保存の壺[0/4]を拾った。"
+  ]
+ }
+}
