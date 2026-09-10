@@ -7,6 +7,7 @@ import { HUD_HEIGHT, LOG_HEIGHT, TILE } from './RenderConfig';
 import { SpriteArt } from './SpriteArt';
 import { TileArt } from './TileArt';
 import { CodexRenderer } from './CodexRenderer';
+import { Ally } from '../../domain/entity/Ally';
 import { FONT } from './RenderConfig';
 
 /** 各レイヤーを合成して 1 フレームを描く */
@@ -56,7 +57,8 @@ export class Renderer {
     for (const a of state.actors) {
       if (!a.isAlive) continue;
       if (a.faction !== 'player' && !state.visibility.isVisible(a.pos)) continue;
-      this.sprites.drawActor(g, a, ox + a.pos.x * TILE, oy + a.pos.y * TILE, t);
+      const highlight = a instanceof Ally && a.joinedTurn >= 0 && state.turn - a.joinedTurn < 4;
+      this.sprites.drawActor(g, a, ox + a.pos.x * TILE, oy + a.pos.y * TILE, t, highlight);
     }
 
     this.lighting.apply(g, state, ox, oy, t);

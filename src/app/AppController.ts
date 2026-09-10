@@ -62,7 +62,7 @@ export class AppController {
   private returnToBase(session: GameSession): void {
     const result = this.campaign.endSortie(session);
     this.scene = { kind: 'base' };
-    this.baseCtrl.showResult(result.message);
+    this.baseCtrl.showResult(result.message, result.allyNotes);
     this.save();
   }
 

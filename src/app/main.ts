@@ -50,6 +50,7 @@ function main(): void {
     if (app.scene.kind === 'dungeon') {
       renderer.render(app.scene.game.session, app.scene.game.mode, t);
     } else {
+      baseRenderer.notice = app.baseCtrl.notice;
       baseRenderer.render(g, app.base, app.baseCtrl.mode, renderer.width, renderer.height, t);
     }
     requestAnimationFrame(loop);

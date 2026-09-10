@@ -9,6 +9,8 @@ export abstract class Actor {
   /** 1ターンに行動できる回数 */
   speed = 1;
   private readonly statuses = new Map<StatusKind, number>();
+  /** 特技ID → 再使用可能になるまでの残りターン */
+  private readonly cooldowns = new Map<string, number>();
 
   protected constructor(
     readonly id: number,
@@ -72,6 +74,21 @@ export abstract class Actor {
       }
     }
     return expired;
+  }
+
+  isSkillReady(skillId: string): boolean {
+    return (this.cooldowns.get(skillId) ?? 0) <= 0;
+  }
+
+  setCooldown(skillId: string, turns: number): void {
+    this.cooldowns.set(skillId, turns);
+  }
+
+  tickCooldowns(): void {
+    for (const [k, v] of this.cooldowns) {
+      if (v <= 1) this.cooldowns.delete(k);
+      else this.cooldowns.set(k, v - 1);
+    }
   }
 
   /** 行動可能か（かなしばり中は不可） */

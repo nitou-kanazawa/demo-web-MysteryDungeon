@@ -1,26 +1,58 @@
 import type { Vec2 } from '../core/Vec2';
+import { SKILL_MAP, type SkillDef } from '../data/skills';
 import { Actor } from './Actor';
+import type { AllySnapshot } from './AllySnapshot';
 import type { MonsterDef } from './MonsterDef';
 
-/** 仲間モンスター。元モンスターの定義を引き継ぎ、レベルアップで少しずつ強くなる */
+export interface AllyBonus {
+  hp: number;
+  atk: number;
+  def: number;
+}
+
+/** 仲間モンスター。種族定義＋レベル＋配合ボーナスでステータスが決まる */
 export class Ally extends Actor {
-  level = 1;
-  exp = 0;
+  level: number;
+  exp: number;
+  readonly bonus: AllyBonus;
+  /** 牧場の記録ID（ダンジョン内で仲間になった個体は undefined） */
+  readonly recordId: string | undefined;
+  /** 仲間になったターン（演出用） */
+  joinedTurn = -1;
 
   constructor(
     id: number,
     readonly definition: MonsterDef,
     pos: Vec2,
+    init?: Partial<AllySnapshot>,
   ) {
-    super(id, definition.name, definition.glyph, definition.color, 'ally', pos, definition.hp);
+    const level = init?.level ?? 1;
+    const bonus = { hp: init?.bonusHp ?? 0, atk: init?.bonusAtk ?? 0, def: init?.bonusDef ?? 0 };
+    super(id, definition.name, definition.glyph, definition.color, 'ally', pos, Ally.maxHpFor(definition, level, bonus));
+    this.level = level;
+    this.exp = init?.exp ?? 0;
+    this.bonus = bonus;
+    this.recordId = init?.uid;
     this.speed = definition.speed;
   }
 
+  static maxHpFor(def: MonsterDef, level: number, bonus: AllyBonus): number {
+    return def.hp + bonus.hp + (level - 1) * 3;
+  }
+
   get atk(): number {
-    return this.definition.atk + (this.level - 1) * 2;
+    return this.definition.atk + this.bonus.atk + (this.level - 1) * 2;
   }
   get def(): number {
-    return this.definition.def + Math.floor((this.level - 1) / 2);
+    return this.definition.def + this.bonus.def + Math.floor((this.level - 1) / 2);
+  }
+
+  /** 現在のレベルで使える特技 */
+  get skills(): SkillDef[] {
+    return this.definition.skills
+      .filter((s) => s.level <= this.level)
+      .map((s) => SKILL_MAP.get(s.id))
+      .filter((s): s is SkillDef => s !== undefined);
   }
 
   /** 経験値を得てレベルアップした回数を返す */
@@ -35,6 +67,26 @@ export class Ally extends Actor {
       ups++;
     }
     return ups;
+  }
+
+  /** このレベルで新しく覚えた特技（レベルアップ直後に呼ぶ） */
+  skillsLearnedAt(level: number): SkillDef[] {
+    return this.definition.skills
+      .filter((s) => s.level === level)
+      .map((s) => SKILL_MAP.get(s.id))
+      .filter((s): s is SkillDef => s !== undefined);
+  }
+
+  toSnapshot(): AllySnapshot {
+    return {
+      ...(this.recordId !== undefined ? { uid: this.recordId } : {}),
+      defId: this.definition.id,
+      level: this.level,
+      exp: this.exp,
+      bonusHp: this.bonus.hp,
+      bonusAtk: this.bonus.atk,
+      bonusDef: this.bonus.def,
+    };
   }
 }
 

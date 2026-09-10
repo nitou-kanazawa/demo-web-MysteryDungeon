@@ -2,6 +2,7 @@ import type { Direction } from '../domain/core/Vec2';
 import type { GameSession } from '../domain/game/GameSession';
 import { directionFromKey } from './input/KeyMap';
 import { handleCodexKey, newCodexView } from './ui/CodexView';
+import { TACTICS } from '../domain/game/Tactic';
 import { buildItemActions } from './ui/ItemActionMenu';
 import type { UiMode } from './ui/UiState';
 
@@ -83,6 +84,12 @@ export class GameController {
       case 'KeyM':
         this.mode = { kind: 'codex', view: newCodexView() };
         return true;
+      case 'KeyT': {
+        const cur = this.session.state.tactic;
+        const next = TACTICS[(TACTICS.indexOf(cur) + 1) % TACTICS.length] ?? cur;
+        this.session.execute({ type: 'tactic', tactic: next });
+        return true;
+      }
       default:
         return false;
     }

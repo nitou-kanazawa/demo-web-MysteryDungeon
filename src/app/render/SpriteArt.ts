@@ -4,7 +4,20 @@ import { FONT, TILE } from './RenderConfig';
 
 /** アクター・アイテムをプリミティブで描く（アセット不要の簡易スプライト） */
 export class SpriteArt {
-  drawActor(g: CanvasRenderingContext2D, a: Actor, px: number, py: number, t: number): void {
+  /** 拠点画面などで種族の見た目だけを描く */
+  drawCreature(g: CanvasRenderingContext2D, glyph: string, color: string, cx: number, cy: number, t: number, scale: number): void {
+    g.save();
+    g.translate(cx, cy);
+    g.scale(scale, scale);
+    g.fillStyle = 'rgba(0,0,0,0.4)';
+    g.beginPath();
+    g.ellipse(0, TILE * 0.42, TILE * 0.36, TILE * 0.14, 0, 0, Math.PI * 2);
+    g.fill();
+    this.drawMonster(g, { id: 0, glyph, color } as Actor, 0, 0, t);
+    g.restore();
+  }
+
+  drawActor(g: CanvasRenderingContext2D, a: Actor, px: number, py: number, t: number, highlight = false): void {
     const cx = px + TILE / 2;
     const cy = py + TILE / 2;
     // 足元の影
@@ -35,6 +48,16 @@ export class SpriteArt {
       g.fillRect(px + 3, py + 1, w, 3);
       g.fillStyle = ratio > 0.5 ? '#4ade80' : ratio > 0.25 ? '#facc15' : '#ef4444';
       g.fillRect(px + 3, py + 1, w * ratio, 3);
+    }
+    if (highlight) {
+      g.fillStyle = '#fde68a';
+      for (let i = 0; i < 4; i++) {
+        const ang = t / 200 + (i * Math.PI) / 2;
+        const r = TILE * 0.55;
+        g.beginPath();
+        g.arc(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r, 2, 0, Math.PI * 2);
+        g.fill();
+      }
     }
     if (a.hasStatus('paralysis')) this.drawStatusMark(g, px, py, '縛', '#c084fc');
     else if (a.hasStatus('confusion')) this.drawStatusMark(g, px, py, '？', '#facc15');

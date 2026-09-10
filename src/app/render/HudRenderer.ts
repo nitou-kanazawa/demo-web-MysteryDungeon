@@ -1,6 +1,9 @@
 import type { GameSession } from '../../domain/game/GameSession';
 import { STATUS_LABEL } from '../../domain/entity/StatusEffect';
 import { FONT, HUD_HEIGHT, LOG_HEIGHT, LOG_LINES } from './RenderConfig';
+import { TACTIC_LABEL } from '../../domain/game/Tactic';
+
+const PARTY_WIDTH = 340;
 
 /** 上部ステータスバーと下部メッセージログ */
 export class HudRenderer {
@@ -72,10 +75,57 @@ export class HudRenderer {
     g.font = `14px ${FONT}`;
     g.textAlign = 'left';
     g.textBaseline = 'top';
+    g.save();
+    g.beginPath();
+    g.rect(0, top, width - PARTY_WIDTH - 8, LOG_HEIGHT);
+    g.clip();
     lines.forEach((line, i) => {
       const age = lines.length - 1 - i;
       g.fillStyle = age === 0 ? '#f8f0dc' : `rgba(220,205,180,${0.85 - age * 0.18})`;
       g.fillText(line, 14, top + 8 + i * 20);
+    });
+    g.restore();
+    this.drawParty(g, session, width - PARTY_WIDTH, top, PARTY_WIDTH, LOG_HEIGHT);
+  }
+
+  /** 仲間の一覧と作戦（ログ右側） */
+  private drawParty(g: CanvasRenderingContext2D, session: GameSession, x: number, y: number, w: number, h: number): void {
+    const st = session.state;
+    g.fillStyle = '#4b3f5c';
+    g.fillRect(x, y, 1, h);
+    g.font = `bold 12px ${FONT}`;
+    g.textAlign = 'left';
+    g.textBaseline = 'top';
+    g.fillStyle = '#9c8f78';
+    g.fillText('仲間', x + 12, y + 8);
+    g.fillStyle = '#c9a961';
+    g.fillText(`作戦: ${TACTIC_LABEL[st.tactic]}  [T]`, x + 60, y + 8);
+    if (st.allies.length === 0) {
+      g.fillStyle = '#6b7280';
+      g.font = `12px ${FONT}`;
+      g.fillText('（いない）', x + 12, y + 30);
+      return;
+    }
+    st.allies.forEach((a, i) => {
+      const ry = y + 28 + i * 20;
+      g.fillStyle = a.color;
+      g.beginPath();
+      g.arc(x + 18, ry + 7, 5, 0, Math.PI * 2);
+      g.fill();
+      g.font = `12px ${FONT}`;
+      g.fillStyle = '#e8dcc0';
+      g.fillText(`${a.name} Lv${a.level}`, x + 30, ry);
+      const bx = x + 170;
+      const bw = 110;
+      g.fillStyle = '#2b2233';
+      g.fillRect(bx, ry + 3, bw, 9);
+      const ratio = a.hp / a.maxHp;
+      g.fillStyle = ratio > 0.5 ? '#3fb950' : ratio > 0.25 ? '#d29922' : '#f85149';
+      g.fillRect(bx, ry + 3, bw * ratio, 9);
+      g.fillStyle = '#9c8f78';
+      g.textAlign = 'right';
+      g.fillText(`${a.hp}/${a.maxHp}`, x + w - 12, ry);
+      g.textAlign = 'left';
     });
   }
 }

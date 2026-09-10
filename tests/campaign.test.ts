@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Campaign } from '../src/domain/base/Campaign';
-import { HomeBase } from '../src/domain/base/HomeBase';
+import { DEFAULT_HOME_CONFIG, HomeBase } from '../src/domain/base/HomeBase';
 import { IdGenerator } from '../src/domain/core/Id';
 import { ITEM_MAP } from '../src/domain/data/items';
 import { ItemFactory } from '../src/domain/item/ItemFactory';
@@ -35,7 +35,7 @@ describe('HomeBase', () => {
   });
 
   it('倉庫との出し入れと容量制限', () => {
-    const b = HomeBase.createNew({ inventoryCapacity: 3, storageCapacity: 1, initialItems: ['herb', 'bread', 'herb'] });
+    const b = HomeBase.createNew({ ...DEFAULT_HOME_CONFIG, inventoryCapacity: 3, storageCapacity: 1, initialItems: ['herb', 'bread', 'herb'] });
     expect(b.deposit(0)).toBe(true);
     expect(b.deposit(0)).toBe(false); // 倉庫満杯
     expect(b.storage.length).toBe(1);

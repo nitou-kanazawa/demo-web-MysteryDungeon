@@ -84,9 +84,18 @@ export class ActionExecutor {
 
   private grantExp(killer: Actor | undefined, victim: Monster): void {
     const exp = victim.definition.exp;
-    if (killer instanceof Player || killer instanceof Ally) {
+    if (killer instanceof Player) {
       const ups = killer.gainExp(exp);
       if (ups > 0) this.log.push(`${killer.name}はレベル${killer.level}に上がった！`);
+    } else if (killer instanceof Ally) {
+      const before = killer.level;
+      const ups = killer.gainExp(exp);
+      if (ups > 0) {
+        this.log.push(`${killer.name}はレベル${killer.level}に上がった！`);
+        for (let lv = before + 1; lv <= killer.level; lv++) {
+          for (const s of killer.skillsLearnedAt(lv)) this.log.push(`${killer.name}は${s.name}を覚えた！`);
+        }
+      }
     }
   }
 
@@ -97,7 +106,9 @@ export class ActionExecutor {
     const pos = findFreeTileNear(this.state, victim.pos) ?? findFreeTileNear(this.state, this.state.player.pos);
     if (!pos) return;
     const ally = new Ally(this.ids.generate(), victim.definition, pos);
+    ally.joinedTurn = this.state.turn;
     this.state.allies.push(ally);
+    this.log.push(`${ally.name}は起き上がり、仲間になりたそうにこちらを見ている…`);
     this.log.push(`${ally.name}が仲間になった！`);
   }
 }

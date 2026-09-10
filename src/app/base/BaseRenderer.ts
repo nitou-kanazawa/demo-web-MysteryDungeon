@@ -3,14 +3,25 @@ import { CodexRenderer } from '../render/CodexRenderer';
 import { drawPanel } from '../render/PanelStyle';
 import { FONT, hash2 } from '../render/RenderConfig';
 import { SpriteArt } from '../render/SpriteArt';
-import { BASE_MENU, type BaseMode } from './BaseController';
+import { BASE_MENU, RANCH_ACTIONS, type BaseMode } from './BaseController';
+import { MONSTER_MAP } from '../../domain/data/monsters';
+import { SKILL_MAP } from '../../domain/data/skills';
+import { Ally } from '../../domain/entity/Ally';
 
 /** 拠点画面（夜の村の広場）。ランタンの光で暖かみを出す */
 export class BaseRenderer {
   private readonly sprites = new SpriteArt();
   private readonly codex = new CodexRenderer();
+  /** 牧場画面の下に出す通知（BaseController.notice を受け取る） */
+  notice = '';
+
+  private partyDefs: Array<{ glyph: string; color: string }> = [];
 
   render(g: CanvasRenderingContext2D, base: HomeBase, mode: BaseMode, width: number, height: number, t: number): void {
+    this.partyDefs = base.allies
+      .filter((a) => a.inParty)
+      .map((a) => MONSTER_MAP.get(a.defId))
+      .filter((d): d is NonNullable<typeof d> => d !== undefined);
     this.drawScene(g, width, height, t);
     this.drawStatus(g, base, width);
     switch (mode.kind) {
@@ -20,12 +31,120 @@ export class BaseRenderer {
       case 'storage':
         this.drawStorage(g, base, mode.side, mode.cursor, width, height);
         break;
+      case 'ranch':
+        this.drawRanch(g, base, mode.cursor, undefined, undefined, width, height);
+        break;
+      case 'ranchAction':
+        this.drawRanch(g, base, mode.index, mode.cursor, undefined, width, height);
+        break;
+      case 'breedSelect':
+        this.drawRanch(g, base, mode.cursor, undefined, mode.index, width, height);
+        break;
       case 'codex':
         this.codex.draw(g, base.codex, mode.view, width, height);
         break;
       case 'result':
-        this.drawResult(g, mode.message, width, height);
+        this.drawResult(g, mode.message, mode.notes, width, height);
         break;
+    }
+  }
+
+  /** 牧場: 仲間一覧。actionCursor があればアクション窓、breedFrom があれば配合相手の選択 */
+  private drawRanch(
+    g: CanvasRenderingContext2D,
+    base: HomeBase,
+    cursor: number,
+    actionCursor: number | undefined,
+    breedFrom: number | undefined,
+    width: number,
+    height: number,
+  ): void {
+    const w = Math.min(900, width - 40);
+    const h = Math.min(540, height - 60);
+    const x = (width - w) / 2;
+    const y = (height - h) / 2;
+    const title =
+      breedFrom !== undefined
+        ? `配合相手を選ぶ（${MONSTER_MAP.get(base.allies[breedFrom]?.defId ?? '')?.name ?? ''} と）`
+        : `牧場 (${base.allies.length}/${base.config.ranchCapacity})  連れて行く: ${base.partyCount}/${base.config.partySize}`;
+    drawPanel(g, x, y, w, h, title);
+    g.font = `12px ${FONT}`;
+    g.fillStyle = '#6b7280';
+    g.textAlign = 'right';
+    g.textBaseline = 'top';
+    g.fillText('↑ ↓ 選択  Enter 決定  Esc 戻る', x + w - 16, y + 14);
+
+    const listX = x + 16;
+    const listY = y + 44;
+    const rowH = 26;
+    g.textAlign = 'left';
+    if (base.allies.length === 0) {
+      g.font = `14px ${FONT}`;
+      g.fillStyle = '#9ca3af';
+      g.fillText('まだ仲間がいない。ダンジョンで倒した魔物が起き上がることがある。', listX + 16, listY + 8);
+    }
+    base.allies.forEach((a, i) => {
+      const def = MONSTER_MAP.get(a.defId);
+      const ry = listY + i * rowH;
+      const sel = i === cursor;
+      if (sel) {
+        g.fillStyle = 'rgba(201,169,97,0.18)';
+        g.fillRect(listX, ry - 2, w - 32, rowH);
+        g.fillStyle = '#f5deb3';
+        g.font = `14px ${FONT}`;
+        g.fillText('▶', listX + 4, ry + 3);
+      }
+      if (def) this.sprites.drawCreature(g, def.glyph, def.color, listX + 36, ry + 11, 0, 0.8);
+      g.font = `bold 14px ${FONT}`;
+      g.fillStyle = i === breedFrom ? '#f472b6' : sel ? '#fff8e7' : '#d6cbb3';
+      g.fillText(`${def?.name ?? a.defId}`, listX + 56, ry + 3);
+      g.font = `13px ${FONT}`;
+      g.fillStyle = '#b7aa8f';
+      const bonus = a.bonusHp + a.bonusAtk + a.bonusDef > 0 ? `  配合+${a.bonusHp}/${a.bonusAtk}/${a.bonusDef}` : '';
+      g.fillText(`Lv${a.level}${bonus}`, listX + 200, ry + 4);
+      if (def) {
+        const hp = Ally.maxHpFor(def, a.level, { hp: a.bonusHp, atk: a.bonusAtk, def: a.bonusDef });
+        const atk = def.atk + a.bonusAtk + (a.level - 1) * 2;
+        const dfn = def.def + a.bonusDef + Math.floor((a.level - 1) / 2);
+        g.fillText(`HP${hp} 攻${atk} 守${dfn}`, listX + 330, ry + 4);
+        const skills = def.skills.filter((s) => s.level <= a.level).map((s) => SKILL_MAP.get(s.id)?.name ?? s.id);
+        g.fillStyle = '#93c5fd';
+        g.fillText(skills.length > 0 ? skills.join('・') : '—', listX + 480, ry + 4);
+      }
+      if (a.inParty) {
+        g.fillStyle = '#7CFC00';
+        g.font = `bold 13px ${FONT}`;
+        g.textAlign = 'right';
+        g.fillText('★ 連れて行く', x + w - 24, ry + 4);
+        g.textAlign = 'left';
+      }
+    });
+
+    if (actionCursor !== undefined) {
+      const ax = x + w / 2 - 90;
+      const ay = listY + Math.min(cursor, 8) * rowH + 20;
+      const aw = 220;
+      const ah = 20 + RANCH_ACTIONS.length * 24;
+      drawPanel(g, ax, ay, aw, ah);
+      g.font = `14px ${FONT}`;
+      g.textAlign = 'left';
+      RANCH_ACTIONS.forEach((label, i) => {
+        const ly = ay + 12 + i * 24;
+        if (i === actionCursor) {
+          g.fillStyle = 'rgba(201,169,97,0.18)';
+          g.fillRect(ax + 10, ly - 3, aw - 20, 22);
+          g.fillStyle = '#f5deb3';
+          g.fillText('▶', ax + 14, ly);
+        }
+        g.fillStyle = i === actionCursor ? '#fff8e7' : '#d6cbb3';
+        g.fillText(label, ax + 34, ly);
+      });
+    }
+    if (this.notice) {
+      g.font = `14px ${FONT}`;
+      g.fillStyle = '#fde68a';
+      g.textAlign = 'left';
+      g.fillText(this.notice, x + 16, y + h - 28);
     }
   }
 
@@ -115,8 +234,11 @@ export class BaseRenderer {
     glow.addColorStop(1, 'rgba(255,120,40,0)');
     g.fillStyle = glow;
     g.fillRect(lx - 300, ly - 300, 600, 600);
-    // 主人公
+    // 主人公と連れて行く仲間
     this.sprites.drawHeroAt(g, width / 2 - 12, groundY - 30, t, 2);
+    this.partyDefs.forEach((def, i) => {
+      this.sprites.drawCreature(g, def.glyph, def.color, width / 2 - 60 - i * 44, groundY - 14, t + i * 300, 1.6);
+    });
     // 看板
     g.font = `bold 26px ${FONT}`;
     g.textAlign = 'left';
@@ -132,7 +254,7 @@ export class BaseRenderer {
     const w = 260;
     const x = width - w - 24;
     const y = 20;
-    drawPanel(g, x, y, w, 150, '戦績');
+    drawPanel(g, x, y, w, 172, '戦績');
     g.font = `14px ${FONT}`;
     g.fillStyle = '#e8dcc0';
     g.textAlign = 'left';
@@ -141,6 +263,7 @@ export class BaseRenderer {
       ['ゴールド', `${base.gold} G`],
       ['持ち物', `${base.inventory.length} / ${base.config.inventoryCapacity}`],
       ['倉庫', `${base.storage.length} / ${base.config.storageCapacity}`],
+      ['牧場', `${base.allies.length} / ${base.config.ranchCapacity}`],
       ['出撃回数', `${base.sorties}`],
       ['最深到達 / 踏破', `${base.bestFloor}F / ${base.clears}回`],
     ];
@@ -236,9 +359,9 @@ export class BaseRenderer {
     });
   }
 
-  private drawResult(g: CanvasRenderingContext2D, message: string, width: number, height: number): void {
-    const w = 560;
-    const h = 150;
+  private drawResult(g: CanvasRenderingContext2D, message: string, notes: readonly string[], width: number, height: number): void {
+    const w = 600;
+    const h = 150 + notes.length * 22;
     const x = (width - w) / 2;
     const y = (height - h) / 2;
     drawPanel(g, x, y, w, h, '帰還');
@@ -246,9 +369,12 @@ export class BaseRenderer {
     g.fillStyle = '#e8dcc0';
     g.textAlign = 'center';
     g.textBaseline = 'top';
-    g.fillText(message, x + w / 2, y + 56);
+    g.fillText(message, x + w / 2, y + 52);
+    g.font = `14px ${FONT}`;
+    g.fillStyle = '#93c5fd';
+    notes.forEach((n, i) => g.fillText(n, x + w / 2, y + 84 + i * 22));
     g.font = `13px ${FONT}`;
     g.fillStyle = '#9c8f78';
-    g.fillText('なにかキーを押す', x + w / 2, y + 108);
+    g.fillText('なにかキーを押す', x + w / 2, y + h - 40);
   }
 }

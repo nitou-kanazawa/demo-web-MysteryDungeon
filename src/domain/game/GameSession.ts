@@ -27,6 +27,11 @@ import { MessageLog } from './MessageLog';
 import { findItemDropTile } from './Placement';
 import { ShopService } from './ShopService';
 import { Codex } from './Codex';
+import { SkillExecutor } from './SkillExecutor';
+import { Ally } from '../entity/Ally';
+import type { AllySnapshot } from '../entity/AllySnapshot';
+import { MONSTER_MAP } from '../data/monsters';
+import { TACTIC_LABEL } from './Tactic';
 import type { ItemSnapshot } from '../item/ItemSnapshot';
 
 export interface SessionOptions {
@@ -37,6 +42,8 @@ export interface SessionOptions {
   /** 拠点から持ち込むアイテム（修正値・中身を含む） */
   readonly startingInventory?: readonly ItemSnapshot[];
   readonly startingGold?: number;
+  /** 出撃時に連れて行く仲間 */
+  readonly startingAllies?: readonly AllySnapshot[];
   /** 図鑑（拠点と共有）。省略時はセッション内だけの図鑑 */
   readonly codex?: Codex;
 }
@@ -56,6 +63,8 @@ export class GameSession {
   readonly history: Command[] = [];
   private readonly startingInventory: readonly ItemSnapshot[];
   private readonly startingGold: number;
+  private readonly startingAllies: readonly AllySnapshot[];
+  private readonly skills: SkillExecutor;
 
   private readonly rng: IRng;
   private readonly ids = new IdGenerator();
@@ -90,8 +99,16 @@ export class GameSession {
     for (const snap of this.startingInventory) this.addStartingItem(this.factory.restore(snap));
     player.gold = this.startingGold;
 
+    this.startingAllies = options.startingAllies ?? [];
+    for (const snap of this.startingAllies) {
+      const def = MONSTER_MAP.get(snap.defId);
+      if (!def) throw new Error(`unknown monster def: ${snap.defId}`);
+      this.state.allies.push(new Ally(this.ids.generate(), def, player.pos, snap));
+    }
+
     this.actions = new ActionExecutor(this.state, this.rng, this.log, this.ids, this.config, this.shops);
     this.effects = new EffectResolver(this.state, this.rng, this.log, this.actions);
+    this.skills = new SkillExecutor(this.state, this.rng, this.log, this.actions);
 
     this.floors.build(this.state, this.rng);
     this.log.push(`ダンジョン ${this.state.floor}F。最深部 ${this.config.maxFloor}F の階段を目指せ！`);
@@ -103,6 +120,7 @@ export class GameSession {
       ...options,
       ...(replay.startingInventory ? { startingInventory: replay.startingInventory } : {}),
       ...(replay.startingGold !== undefined ? { startingGold: replay.startingGold } : {}),
+      ...(replay.startingAllies ? { startingAllies: replay.startingAllies } : {}),
     };
     const session = new GameSession(replay.seed, merged);
     for (const cmd of replay.commands) session.execute(cmd);
@@ -115,7 +133,13 @@ export class GameSession {
       commands: [...this.history],
       startingInventory: [...this.startingInventory],
       startingGold: this.startingGold,
+      startingAllies: [...this.startingAllies],
     };
+  }
+
+  /** 現在の仲間をスナップショット化（牧場への持ち帰り用） */
+  alliesSnapshot(): AllySnapshot[] {
+    return this.state.allies.filter((a) => a.isAlive).map((a) => a.toSnapshot());
   }
 
   /** 現在の所持品をスナップショット化（拠点への持ち帰り用） */
@@ -138,6 +162,7 @@ export class GameSession {
     }
     const keeper = s.shop?.keeper;
     if (keeper && s.visibility.isVisible(keeper.pos)) this.codex.seeMonster(keeper.definition.id);
+    for (const a of s.allies) this.codex.seeMonster(a.definition.id);
   }
 
   get maxFloor(): number {
@@ -183,6 +208,9 @@ export class GameSession {
         return this.cmdThrow(cmd.index);
       case 'sell':
         return this.cmdSell(cmd.index);
+      case 'tactic':
+        this.state.tactic = cmd.tactic;
+        return { consumedTurn: false, message: `作戦を「${TACTIC_LABEL[cmd.tactic]}」にした。` };
       case 'potInsert':
         return this.cmdPotInsert(cmd.potIndex, cmd.itemIndex);
       case 'potTakeOut':
@@ -407,7 +435,7 @@ export class GameSession {
     for (const ally of [...this.state.allies]) {
       for (let i = 0; i < ally.speed; i++) {
         if (!ally.canAct || this.state.status !== 'playing') break;
-        this.perform(ally, this.allyAI.decide(ally, this.state, this.rng));
+        this.perform(ally, this.allyAI.decide(ally, this.state, this.rng, this.state.tactic));
       }
     }
     for (const m of [...this.state.monsters]) {
@@ -426,6 +454,9 @@ export class GameSession {
         break;
       case 'attack':
         this.actions.attack(actor, action.target);
+        break;
+      case 'skill':
+        this.skills.use(actor, action.skill, action.target);
         break;
       case 'wait':
         break;
@@ -450,6 +481,7 @@ export class GameSession {
     }
 
     for (const a of s.actors) {
+      a.tickCooldowns();
       for (const kind of a.tickStatuses()) {
         if (a.faction !== 'enemy') this.log.push(`${a.name}の${STATUS_LABEL[kind]}が解けた。`);
       }

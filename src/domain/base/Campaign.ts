@@ -1,6 +1,7 @@
 import { GameSession, type SessionOptions } from '../game/GameSession';
 import type { GameStatus } from '../game/GameState';
 import type { HomeBase } from './HomeBase';
+import { MONSTER_MAP } from '../data/monsters';
 
 export interface SortieResult {
   readonly status: Exclude<GameStatus, 'playing'>;
@@ -8,6 +9,8 @@ export interface SortieResult {
   readonly gold: number;
   readonly itemsKept: number;
   readonly message: string;
+  /** 仲間に関する補足（戦死・牧場満員など） */
+  readonly allyNotes: readonly string[];
 }
 
 /**
@@ -25,6 +28,7 @@ export class Campaign {
       ...extra,
       startingInventory: this.base.inventorySnapshot(),
       startingGold: this.base.gold,
+      startingAllies: this.base.partySnapshots(),
       codex: this.base.codex,
     });
     this.base.sorties++;
@@ -40,11 +44,15 @@ export class Campaign {
     this.base.bestFloor = Math.max(this.base.bestFloor, floor);
     let message: string;
     let itemsKept = 0;
+    const allyNotes: string[] = [];
     if (status === 'dead') {
       this.base.replaceInventory([]);
       this.base.gold = 0;
       message = `${floor}F で力尽きた… 持ち物とゴールドを失った。`;
+      if (session.state.allies.some((a) => a.recordId === undefined)) allyNotes.push('道中で仲間にした魔物とは別れた。');
+      if (this.base.partyCount > 0) allyNotes.push('連れていた仲間は牧場に逃げ帰った。');
     } else {
+      this.syncAllies(session, allyNotes);
       const snaps = session.inventorySnapshot();
       this.base.replaceInventory(snaps);
       this.base.gold = session.state.player.gold;
@@ -57,6 +65,34 @@ export class Campaign {
       }
     }
     this.current = undefined;
-    return { status, floor, gold: this.base.gold, itemsKept, message };
+    return { status, floor, gold: this.base.gold, itemsKept, message, allyNotes };
+  }
+
+  /** 生還時: 連れて行った仲間の成長を書き戻し、戦死した仲間を除き、新しい仲間を迎える */
+  private syncAllies(session: GameSession, notes: string[]): void {
+    const alive = session.alliesSnapshot();
+    const aliveIds = new Set(alive.map((a) => a.uid).filter((u): u is string => u !== undefined));
+    for (const rec of [...this.base.allies]) {
+      if (!rec.inParty) continue;
+      if (!aliveIds.has(rec.uid)) {
+        const name = MONSTER_MAP.get(rec.defId)?.name ?? rec.defId;
+        notes.push(`${name}は帰ってこなかった…`);
+        this.base.allies.splice(this.base.allies.indexOf(rec), 1);
+      }
+    }
+    for (const snap of alive) {
+      const name = MONSTER_MAP.get(snap.defId)?.name ?? snap.defId;
+      if (snap.uid !== undefined) {
+        const rec = this.base.findAlly(snap.uid);
+        if (rec) {
+          rec.level = snap.level;
+          rec.exp = snap.exp;
+        }
+      } else if (this.base.addAlly(snap)) {
+        notes.push(`${name}が牧場に加わった。`);
+      } else {
+        notes.push(`牧場がいっぱいで${name}とは別れた。`);
+      }
+    }
   }
 }

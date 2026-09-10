@@ -4,6 +4,7 @@ import type { Actor } from '../entity/Actor';
 import { firstStepToward } from '../map/Pathfinding';
 import type { GameState } from '../game/GameState';
 import type { AiAction } from './AiAction';
+import type { SkillDef } from '../data/skills';
 
 /** 隣接していて、角抜けせずに攻撃できる相手への方向を返す */
 export function adjacentAttackDir(state: GameState, self: Actor, target: Actor): Direction | undefined {
@@ -47,6 +48,67 @@ export function canNotice(state: GameState, self: Actor, target: Actor, corridor
   const room = state.map.roomAt(self.pos);
   if (room && room.containsWithBorder(target.pos)) return true;
   return chebyshev(self.pos, target.pos) <= corridorRange;
+}
+
+/** ブレスが届く直線上の対象を探す（縦・横・斜めの直線、射程内、途中の地形が通れる） */
+export function breathTarget<T extends Actor>(
+  state: GameState,
+  user: Actor,
+  skill: SkillDef,
+  candidates: readonly T[],
+): T | undefined {
+  for (const t of candidates) {
+    const dx = t.pos.x - user.pos.x;
+    const dy = t.pos.y - user.pos.y;
+    const straight = dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy);
+    const dist = chebyshev(user.pos, t.pos);
+    if (!straight || dist === 0 || dist > skill.range) continue;
+    const dir = dirFromDelta(dx, dy);
+    if (!dir) continue;
+    let p = user.pos;
+    let clear = true;
+    for (let i = 0; i < dist; i++) {
+      if (!state.map.canStep(p, dir)) {
+        clear = false;
+        break;
+      }
+      p = addVec(p, DIR_VEC[dir]);
+    }
+    if (clear) return t;
+  }
+  return undefined;
+}
+
+/** 射程内で最も HP 割合が低い味方（threshold 未満のみ） */
+export function healTarget<T extends Actor>(user: Actor, friends: readonly T[], range: number, threshold: number): T | undefined {
+  let best: T | undefined;
+  let bestRatio = threshold;
+  for (const f of friends) {
+    if (!f.isAlive || chebyshev(user.pos, f.pos) > range) continue;
+    const ratio = f.hp / f.maxHp;
+    if (ratio < bestRatio) {
+      bestRatio = ratio;
+      best = f;
+    }
+  }
+  return best;
+}
+
+/** threat から離れる一歩（離れられる中で最も遠くなる方向） */
+export function stepAwayFrom(state: GameState, self: Actor, threat: Vec2): Direction | undefined {
+  let best: Direction | undefined;
+  let bestD = chebyshev(self.pos, threat);
+  for (const d of DIRECTIONS) {
+    if (!state.map.canStep(self.pos, d)) continue;
+    const p = addVec(self.pos, DIR_VEC[d]);
+    if (state.isOccupied(p)) continue;
+    const dist = chebyshev(p, threat);
+    if (dist > bestD) {
+      bestD = dist;
+      best = d;
+    }
+  }
+  return best;
 }
 
 export function nearest<T extends Actor>(from: Vec2, actors: readonly T[]): T | undefined {

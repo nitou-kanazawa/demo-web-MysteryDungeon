@@ -7,6 +7,7 @@ import type { ItemInstance } from '../item/ItemInstance';
 import type { DungeonMap } from '../map/DungeonMap';
 import { Visibility } from '../map/Visibility';
 import type { Room } from '../map/Room';
+import type { Tactic } from './Tactic';
 import type { Shopkeeper } from '../entity/Shopkeeper';
 
 /** フロアの店。keeper が undefined なら店主は敵化済み */
@@ -27,6 +28,8 @@ export class GameState {
   monsters: Monster[] = [];
   allies: Ally[] = [];
   shop: ShopState | undefined;
+  /** 仲間への作戦 */
+  tactic: Tactic = 'aggressive';
   private readonly ground = new Map<string, ItemInstance>();
 
   constructor(

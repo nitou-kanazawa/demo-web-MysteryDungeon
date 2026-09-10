@@ -1,4 +1,6 @@
 import type { Direction } from '../core/Vec2';
+import type { Tactic } from './Tactic';
+import type { AllySnapshot } from '../entity/AllySnapshot';
 
 /**
  * プレイヤーの入力をデータとして表現したコマンド。
@@ -16,6 +18,7 @@ export type Command =
   | { readonly type: 'drop'; readonly index: number }
   | { readonly type: 'throw'; readonly index: number }
   | { readonly type: 'sell'; readonly index: number }
+  | { readonly type: 'tactic'; readonly tactic: Tactic }
   | { readonly type: 'potInsert'; readonly potIndex: number; readonly itemIndex: number }
   | { readonly type: 'potTakeOut'; readonly potIndex: number; readonly contentIndex: number };
 
@@ -35,4 +38,6 @@ export interface Replay {
   /** 出撃時に持ち込んだアイテム（拠点からの持ち込み） */
   readonly startingInventory?: readonly ItemSnapshot[];
   readonly startingGold?: number;
+  /** 出撃時に連れて行った仲間 */
+  readonly startingAllies?: readonly AllySnapshot[];
 }

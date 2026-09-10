@@ -58,7 +58,7 @@ export const DEFAULT_FLOOR_CONFIG: FloorConfig = {
   itemsPerFloor: [5, 8],
   hungerInterval: 10,
   regenInterval: 6,
-  maxAllies: 2,
+  maxAllies: 3,
   respawnInterval: 40,
   shopChance: 0.35,
   shopItems: [3, 6],
