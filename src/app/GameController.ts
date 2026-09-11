@@ -23,6 +23,12 @@ export class GameController {
   dashIntervalMs = 110;
   /** 演出の再生器 */
   readonly anim = new AnimationPlayer();
+  /** 階が変わった直後（画面遷移の起動用）。読むとクリアされる */
+  private floorChanged = false;
+  private lastThemeId = '';
+  private lastStatus = 'playing';
+  /** ゲームが終了した直後（画面遷移の起動用）。読むとクリアされる */
+  private endedStatus: 'dead' | 'won' | 'escaped' | undefined;
 
   constructor(readonly session: GameSession) {
     this.dash = new DashRunner(session);
@@ -46,6 +52,34 @@ export class GameController {
   private drainVisuals(now: number): void {
     const events = this.session.visuals.drain();
     if (events.length > 0) this.anim.push(events, now);
+    if (events.some((e) => e.type === 'floor')) this.floorChanged = true;
+    const status = this.session.state.status;
+    if (status !== this.lastStatus) {
+      this.lastStatus = status;
+      if (status !== 'playing') this.endedStatus = status;
+    }
+  }
+
+  /** 階が変わっていればタイトルカード用の情報を返す（1 回だけ） */
+  consumeFloorChange(): { title: string; subtitle: string | undefined } | undefined {
+    if (!this.floorChanged) return undefined;
+    this.floorChanged = false;
+    const st = this.session.state;
+    const themeChanged = st.theme.id !== this.lastThemeId;
+    this.lastThemeId = st.theme.id;
+    return { title: `${st.floor}F  ${st.theme.name}`, subtitle: themeChanged ? st.theme.description : undefined };
+  }
+
+  /** ゲーム終了直後なら理由を返す（1 回だけ） */
+  consumeEnded(): 'dead' | 'won' | 'escaped' | undefined {
+    const e = this.endedStatus;
+    this.endedStatus = undefined;
+    return e;
+  }
+
+  /** 生成直後のテーマを記憶する（出撃時の遷移で二重表示しないため） */
+  markCurrentTheme(): void {
+    this.lastThemeId = this.session.state.theme.id;
   }
 
   exportReplay(): string {

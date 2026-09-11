@@ -21,6 +21,7 @@ function main(): void {
   const app = new AppController(new LocalStorageBaseStorage(), () => fixedSeed ?? Date.now() >>> 0);
   const renderer = new Renderer(canvas, DEFAULT_GENERATOR_CONFIG.width, DEFAULT_GENERATOR_CONFIG.height);
   const baseRenderer = new BaseRenderer();
+  app.canvas = canvas;
 
   const fit = (): void => {
     const scale = Math.min(window.innerWidth / renderer.width, window.innerHeight / renderer.height, 1.5);
@@ -51,14 +52,15 @@ function main(): void {
   const g = canvas.getContext('2d');
   if (!g) throw new Error('2d context unavailable');
   const loop = (t: number): void => {
+    app.tick(t);
     if (app.scene.kind === 'dungeon') {
-      app.scene.game.tick(t);
       if (app.scene.game.exitRequested) app.handleKey(new KeyboardEvent('keydown', { code: 'Space' }));
       renderer.render(app.scene.game.session, app.scene.game.mode, t, app.scene.game.anim);
     } else {
       baseRenderer.notice = app.baseCtrl.notice;
       baseRenderer.render(g, app.base, app.baseCtrl.mode, renderer.width, renderer.height, t);
     }
+    app.transition.draw(g, renderer.width, renderer.height, t);
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
