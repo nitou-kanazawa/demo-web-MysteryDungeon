@@ -243,7 +243,93 @@ function ashPath(): PixelSprite {
   return c.toSprite({ a: '#4a3a34', d: '#2e2320', r: '#9a3412' });
 }
 
+// ---------------------------------------------------------------- 鏡・廃墟・暗黒
+
+/** 鏡の壁（反射する） */
+function mirror(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'f');
+  c.rect(2, 2, 28, 28, 'm');
+  c.line(6, 26, 24, 6, 'h', 2).line(12, 28, 28, 12, 'l');
+  c.rect(3, 3, 26, 1, 'l').rect(3, 3, 1, 26, 'l');
+  c.stamp(20, 8, ['s']).stamp(9, 20, ['s']);
+  return c.toSprite({ f: '#3a3a4a', m: '#7dd3fc', h: '#e0f2fe', l: '#bae6fd', s: '#ffffff' });
+}
+
+/** 廃墟のレンガ壁（崩れかけ・苔） */
+function ruinWall(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 's');
+  for (const y of [7, 15, 23, 31]) c.rect(0, y, 32, 1, 'm');
+  for (let row = 0; row < 4; row++) {
+    const off = row % 2 === 0 ? 0 : 8;
+    for (let x = off; x < 32; x += 16) c.rect(x, row * 8, 1, 7, 'm').rect(x + 1, row * 8, 14, 1, 'h');
+  }
+  c.stamp(3, 2, ['dd', 'ddd']).stamp(19, 17, ['dd', '.dd']).stamp(26, 25, ['g', 'gg']).stamp(5, 26, ['gg']);
+  return c.toSprite({ s: '#6b5344', m: '#2f231c', h: '#8a6f5c', d: '#3f302a', g: '#4d7a3a' });
+}
+
+/** 廃墟の奥（暗い瓦礫） */
+function ruinRubble(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'r');
+  c.stamp(3, 5, ['dd', '.d']).stamp(18, 12, ['ddd']).stamp(9, 24, ['dd']).stamp(25, 27, ['d', 'd']);
+  return c.toSprite({ r: '#17120f', d: '#22191a' });
+}
+
+/** 廃墟の石畳（欠けと草） */
+function cobble(variant: 0 | 1): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'f');
+  c.rect(0, 0, 32, 1, 'm').rect(0, 0, 1, 32, 'm');
+  if (variant === 0) {
+    c.rect(0, 16, 32, 1, 'm').rect(16, 0, 1, 16, 'm').rect(8, 16, 1, 16, 'm').rect(24, 16, 1, 16, 'm');
+    c.stamp(20, 6, ['g', 'gg']);
+  } else {
+    c.rect(11, 0, 1, 32, 'm').rect(11, 12, 21, 1, 'm').rect(0, 22, 11, 1, 'm');
+    c.stamp(4, 26, ['gg', '.g']).stamp(26, 4, ['d']);
+  }
+  c.stamp(28, 28, ['h']).stamp(3, 4, ['h']);
+  return c.toSprite({ f: '#7a6a5a', m: '#3d322a', h: '#8e7d6b', g: '#5b7f3d', d: '#5a4a3b' });
+}
+
+/** 廃墟の路地（土と割れた石） */
+function alley(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'e');
+  c.stamp(4, 5, ['ss', 's']).stamp(20, 9, ['sss']).stamp(10, 19, ['s', 'ss']).stamp(24, 24, ['ss']);
+  c.stamp(14, 3, ['g']).stamp(27, 16, ['g']).stamp(7, 27, ['g']);
+  return c.toSprite({ e: '#5a5048', s: '#3c342e', g: '#4d6b35' });
+}
+
+/** 暗黒の壁（黒曜石） */
+function darkWall(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'w');
+  for (const y of [7, 15, 23, 31]) c.rect(0, y, 32, 1, 'm');
+  for (let row = 0; row < 4; row++) {
+    const off = row % 2 === 0 ? 0 : 8;
+    for (let x = off; x < 32; x += 16) c.rect(x, row * 8, 1, 7, 'm').rect(x + 1, row * 8, 14, 1, 'h');
+  }
+  c.stamp(6, 4, ['p']).stamp(21, 19, ['p', 'p']);
+  return c.toSprite({ w: '#1e1b2e', m: '#0a0912', h: '#2f2a45', p: '#5b21b6' });
+}
+
+/** 暗黒の床（黒い石） */
+function darkFloor(variant: 0 | 1): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'f');
+  c.rect(0, 0, 32, 1, 'm').rect(0, 0, 1, 32, 'm');
+  if (variant === 0) c.rect(0, 16, 32, 1, 'm').rect(16, 0, 1, 16, 'm').stamp(6, 20, ['p']);
+  else c.rect(11, 0, 1, 32, 'm').rect(11, 20, 21, 1, 'm').stamp(22, 6, ['p']);
+  return c.toSprite({ f: '#2a2638', m: '#14121c', p: '#4c1d95' });
+}
+
+/** 暗黒の通路 */
+function darkPath(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'e');
+  c.stamp(4, 5, ['dd', '.d']).stamp(20, 9, ['ddd']).stamp(10, 19, ['d', 'dd']).stamp(24, 24, ['dd']);
+  return c.toSprite({ e: '#221f2e', d: '#141220' });
+}
+
+export const MIRROR_TILE: PixelSprite = mirror();
+
 export const THEME_TILES_EXTRA = {
+  ruins: { wall: ruinWall(), rock: ruinRubble(), floor: [cobble(0), cobble(1)], corridor: alley() },
+  dark: { wall: darkWall(), rock: rock(), floor: [darkFloor(0), darkFloor(1)], corridor: darkPath() },
   ice: { wall: iceWall(), rock: rock(), floor: [ice(0), ice(1)], corridor: snowPath(), ice: [ice(0), ice(1)] },
   volcano: { wall: volcanoWall(), rock: rock(), floor: [basalt(0), basalt(1)], corridor: ashPath(), lava: [lava(0), lava(1)] },
 } as const;

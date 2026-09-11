@@ -8,6 +8,11 @@ import type { DungeonMap } from './DungeonMap';
 export class Visibility {
   private readonly visible: boolean[];
   private readonly explored: boolean[];
+  /**
+   * 視界半径の上限。霧や松明切れ・暗黒テーマで設定する。
+   * undefined なら従来どおり（部屋全体／通路は周囲 1 マス）
+   */
+  sightRadius: number | undefined;
 
   constructor(private readonly map: DungeonMap) {
     const n = map.width * map.height;
@@ -27,7 +32,13 @@ export class Visibility {
   update(observer: Vec2): void {
     this.visible.fill(false);
     const room = this.map.roomAt(observer);
-    if (room) {
+    const r = this.sightRadius;
+    if (room && r !== undefined) {
+      // 霧・暗闇: 部屋の中でも半径 r まで
+      for (let y = Math.max(room.y - 1, observer.y - r); y <= Math.min(room.bottom + 1, observer.y + r); y++) {
+        for (let x = Math.max(room.x - 1, observer.x - r); x <= Math.min(room.right + 1, observer.x + r); x++) this.mark({ x, y });
+      }
+    } else if (room) {
       for (let y = room.y - 1; y <= room.bottom + 1; y++) {
         for (let x = room.x - 1; x <= room.right + 1; x++) this.mark({ x, y });
       }

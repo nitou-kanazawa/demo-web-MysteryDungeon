@@ -1,13 +1,22 @@
-import type { Vec2 } from '../core/Vec2';
+import { DIR_VEC, addVec, eqVec, type Direction, type Vec2 } from '../core/Vec2';
 import type { Actor } from '../entity/Actor';
 import { TileType } from '../map/Tile';
 import type { GameState } from './GameState';
 import type { MessageLog } from './MessageLog';
 import { findFreeTileNear } from './Placement';
+import type { VisualSink } from './VisualEvent';
+
+/** FloorEvent がアクターに干渉するための最小限の口 */
+export interface FloorEventActions {
+  dealDamage(source: Actor | undefined, target: Actor, amount: number): void;
+  knockback(target: Actor, dir: Direction, maxDistance?: number): number;
+}
 
 export interface FloorEventContext {
   readonly state: GameState;
   readonly log: MessageLog;
+  readonly actions?: FloorEventActions;
+  readonly visuals?: VisualSink;
 }
 
 /** フロアで毎ターン進む出来事（満潮・崩落など）。FloorBuilder が登録し、endTurn で tick される */
@@ -156,5 +165,61 @@ export class RefreezeEvent implements FloorEvent {
     }
   }
 }
+
+/**
+ * 転がる岩。直線の通路を毎ターン 1 マス進み、端で反転する。
+ * 岩のマスに入ったアクターは 10 ダメージ＋進行方向へ吹き飛ばされる。
+ * 位置は TileFeature `rock` で表す（押せる岩 boulder とは別）。
+ */
+export class RollingRockEvent implements FloorEvent {
+  readonly id = 'rollingRock';
+  pos: Vec2;
+  dir: Direction;
+
+  constructor(
+    state: GameState,
+    /** 岩が往復する通路のマス列（直線） */
+    readonly lane: readonly Vec2[],
+    startIndex = 0,
+  ) {
+    const first = lane[0] as Vec2;
+    const second = lane[1] ?? first;
+    this.pos = lane[startIndex] ?? first;
+    this.dir = (second.x > first.x ? 'E' : second.x < first.x ? 'W' : second.y > first.y ? 'S' : 'N') as Direction;
+    state.placeFeature(this.pos, { kind: 'rock' });
+  }
+
+  static readonly DAMAGE = 10;
+
+  tick({ state, log, actions, visuals }: FloorEventContext): void {
+    let next = addVec(this.pos, DIR_VEC[this.dir]);
+    if (!this.onLane(next) || state.featureAt(next)?.kind === 'boulder') {
+      this.dir = REVERSE[this.dir];
+      next = addVec(this.pos, DIR_VEC[this.dir]);
+      if (!this.onLane(next)) return;
+    }
+    const victim = state.actorAt(next);
+    if (victim && victim.isAlive) {
+      log.push(`転がる岩が${victim.name}にぶつかった！`);
+      visuals?.emit({ type: 'popup', pos: next, text: '岩！', color: '#f97316' });
+      actions?.dealDamage(undefined, victim, RollingRockEvent.DAMAGE);
+      if (victim.isAlive) actions?.knockback(victim, this.dir, 3);
+      if (victim.isAlive && eqVec(victim.pos, next)) {
+        // 押し出せなかった: 岩が跳ね返る
+        this.dir = REVERSE[this.dir];
+        return;
+      }
+    }
+    state.removeFeatureAt(this.pos);
+    this.pos = next;
+    state.placeFeature(next, { kind: 'rock' });
+  }
+
+  private onLane(p: Vec2): boolean {
+    return this.lane.some((t) => eqVec(t, p));
+  }
+}
+
+const REVERSE: Readonly<Record<Direction, Direction>> = { N: 'S', S: 'N', E: 'W', W: 'E', NE: 'SW', SW: 'NE', NW: 'SE', SE: 'NW' };
 
 export const isFloorEventActor = (a: Actor): boolean => a.isAlive;

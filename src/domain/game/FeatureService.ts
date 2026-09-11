@@ -5,6 +5,8 @@ import { TileType } from '../map/Tile';
 import type { Actor } from '../entity/Actor';
 import { Monster } from '../entity/Monster';
 import { Player } from '../entity/Player';
+import { Ally } from '../entity/Ally';
+import { MONSTER_MAP } from '../data/monsters';
 import type { ActionExecutor } from './ActionExecutor';
 import type { GameState } from './GameState';
 import type { MessageLog } from './MessageLog';
@@ -18,6 +20,8 @@ export interface FeatureHooks {
   readonly fallToNextFloor: () => void;
   /** ワープ: プレイヤーをランダムな場所へ */
   readonly teleportPlayer: () => void;
+  /** 仲間の最大数（檻から加入するときの上限） */
+  readonly maxAllies: number;
 }
 
 /**
@@ -56,10 +60,90 @@ export class FeatureService {
       case 'sign':
         if (actor instanceof Player) this.log.push(`石碑「${f.text}」`);
         break;
+      case 'switch':
+        if (actor instanceof Player) this.activateSwitch(f, pos);
+        break;
       case 'boulder':
       case 'crack':
+      case 'door':
+      case 'gate':
+      case 'cage':
+      case 'rock':
         break;
     }
+  }
+
+  /** スイッチ: 1 回だけ作動し、橋を架ける／格子を開く */
+  private activateSwitch(f: Extract<TileFeature, { kind: 'switch' }>, pos: Vec2): void {
+    if (f.active) {
+      this.log.push('スイッチはもう作動している。');
+      return;
+    }
+    f.active = true;
+    this.visuals.emit({ type: 'popup', pos, text: 'カチッ', color: POPUP_COLORS.warn });
+    if (f.mode === 'bridge') {
+      for (const t of f.targets) {
+        if (this.state.map.get(t) === this.state.map.solid) this.state.map.set(t, TileType.Corridor);
+      }
+      this.log.push('スイッチを踏んだ！ 遠くで橋が架かる音がした。');
+    } else {
+      let opened = 0;
+      for (const t of f.targets) {
+        if (this.state.featureAt(t)?.kind === 'gate') {
+          this.state.removeFeatureAt(t);
+          opened++;
+        }
+      }
+      this.log.push(opened > 0 ? 'スイッチを踏んだ！ どこかで格子が開いた。' : 'スイッチを踏んだが、何も起こらなかった。');
+    }
+    this.state.visibility.update(this.state.player.pos);
+  }
+
+  /** 持ち物のカギを 1 つ消費する。無ければ false */
+  private consumeKey(player: Player): boolean {
+    const key = player.inventory.items.find((i) => i.def.id === 'key');
+    if (!key) return false;
+    player.inventory.remove(key);
+    return true;
+  }
+
+  /** 扉に体当たり: カギがあれば開く */
+  openDoor(player: Player, pos: Vec2): boolean {
+    const f = this.state.featureAt(pos);
+    if (!f || f.kind !== 'door') return false;
+    if (!this.consumeKey(player)) {
+      this.log.push('扉には鍵がかかっている。カギが必要だ。');
+      return false;
+    }
+    this.state.removeFeatureAt(pos);
+    this.log.push('カギを使って扉を開けた！');
+    this.visuals.emit({ type: 'popup', pos, text: '開いた', color: POPUP_COLORS.good });
+    return true;
+  }
+
+  /** 檻に体当たり: カギがあれば中の魔物が仲間になる */
+  openCage(player: Player, pos: Vec2): boolean {
+    const f = this.state.featureAt(pos);
+    if (!f || f.kind !== 'cage') return false;
+    const def = MONSTER_MAP.get(f.defId);
+    if (!def) return false;
+    const hasKey = player.inventory.items.some((i) => i.def.id === 'key');
+    if (!hasKey) {
+      this.log.push(`檻には鍵がかかっている。中の${def.name}が助けを求めている…`);
+      return false;
+    }
+    if (this.state.allies.length >= this.hooks.maxAllies) {
+      this.log.push('仲間がいっぱいで連れて行けない。');
+      return false;
+    }
+    this.consumeKey(player);
+    this.state.removeFeatureAt(pos);
+    const ally = new Ally(this.ids.generate(), def, pos);
+    ally.joinedTurn = this.state.turn;
+    this.state.allies.push(ally);
+    this.log.push(`檻を開けた！ ${def.name}が仲間になった！`);
+    this.visuals.emit({ type: 'popup', pos, text: '仲間になった！', color: POPUP_COLORS.good });
+    return true;
   }
 
   /**

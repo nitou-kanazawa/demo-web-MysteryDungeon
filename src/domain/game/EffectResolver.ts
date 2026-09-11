@@ -1,5 +1,5 @@
 import type { IRng } from '../core/Rng';
-import { DIR_VEC, addVec, type Direction, type Vec2 } from '../core/Vec2';
+import type { Direction, Vec2 } from '../core/Vec2';
 import type { Actor } from '../entity/Actor';
 import type { ItemEffect } from '../item/ItemDef';
 import { findFreeTileNear } from './Placement';
@@ -7,6 +7,8 @@ import type { GameState } from './GameState';
 import type { MessageLog } from './MessageLog';
 import type { ActionExecutor } from './ActionExecutor';
 import { POPUP_COLORS, type VisualSink } from './VisualEvent';
+import { traceProjectile } from './Projectile';
+import { effectiveSightRadius } from './Sight';
 
 /** アイテム効果をゲーム状態に適用する */
 export interface EffectHooks {
@@ -108,6 +110,15 @@ export class EffectResolver {
         this.log.push(n > 0 ? `${n}個の罠が見えるようになった！` : 'このフロアに罠は無いようだ。');
         return true;
       }
+      case 'refuelTorch': {
+        const wasOut = p.torch <= 0;
+        p.torch = Math.min(p.maxTorch, p.torch + effect.amount);
+        this.state.visibility.sightRadius = effectiveSightRadius(this.state);
+        this.state.visibility.update(p.pos);
+        this.log.push(wasOut ? '松明に火が灯った！ 周りが見えるようになった。' : '松明の火が大きくなった。');
+        this.visuals.emit({ type: 'popup', pos: p.pos, text: '松明', color: POPUP_COLORS.warn });
+        return true;
+      }
       default:
         this.log.push('何も起こらなかった。');
         return false;
@@ -116,13 +127,16 @@ export class EffectResolver {
 
   /** 杖の魔法弾: from から dir へ直進し、最初に当たったアクターに効果を与える */
   applyBolt(effect: ItemEffect, from: Vec2, dir: Direction, maxRange = 10): void {
-    const target = this.findBoltTarget(from, dir, maxRange);
-    const end = target ? target.pos : this.boltEnd(from, dir, maxRange);
-    this.visuals.emit({ type: 'projectile', from, to: end, kind: 'bolt', color: '#c084fc' });
+    const trace = traceProjectile(this.state, from, dir, maxRange);
+    for (const seg of trace.segments) this.visuals.emit({ type: 'projectile', from: seg.from, to: seg.to, kind: 'bolt', color: '#c084fc' });
+    if (trace.reflected) this.log.push('魔法弾は鏡に反射した！');
+    const target = trace.hit;
     if (!target) {
       this.log.push('魔法弾は何にも当たらなかった。');
       return;
     }
+    // 反射後は向きが反転している（吹き飛ばしの方向に使う）
+    dir = trace.dir;
     switch (effect.kind) {
       case 'boltParalyze':
         target.addStatus('paralysis', effect.turns);
@@ -147,26 +161,4 @@ export class EffectResolver {
     }
   }
 
-  /** 何にも当たらなかったときの魔法弾の終点 */
-  private boltEnd(from: Vec2, dir: Direction, maxRange: number): Vec2 {
-    let p = from;
-    for (let i = 0; i < maxRange; i++) {
-      const next = addVec(p, DIR_VEC[dir]);
-      if (!this.state.map.passesProjectile(next)) break;
-      p = next;
-    }
-    return p;
-  }
-
-  private findBoltTarget(from: Vec2, dir: Direction, maxRange: number): Actor | undefined {
-    let p = from;
-    for (let i = 0; i < maxRange; i++) {
-      const next = addVec(p, DIR_VEC[dir]);
-      if (!this.state.map.passesProjectile(next)) return undefined;
-      const a = this.state.actorAt(next);
-      if (a) return a;
-      p = next;
-    }
-    return undefined;
-  }
 }

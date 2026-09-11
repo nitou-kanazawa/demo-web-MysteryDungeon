@@ -17,6 +17,9 @@ export function buildItemActions(item: ItemInstance, player: Player, canSell = f
     case 'staff':
       actions.push({ id: 'use', label: '振る' });
       break;
+    case 'tool':
+      actions.push({ id: 'use', label: '使う' });
+      break;
     case 'weapon':
     case 'shield':
       actions.push(player.isEquipped(item) ? { id: 'unequip', label: '外す' } : { id: 'equip', label: '装備' });

@@ -54,7 +54,7 @@ export function firstStepToward(
 }
 
 /** 到達可能な全マスの集合（連結性チェック用） */
-export function reachableFrom(map: DungeonMap, from: Vec2): Set<string> {
+export function reachableFrom(map: DungeonMap, from: Vec2, blocked?: (p: Vec2) => boolean): Set<string> {
   const seen = new Set<string>([keyOf(from)]);
   const queue: Vec2[] = [from];
   let head = 0;
@@ -64,7 +64,7 @@ export function reachableFrom(map: DungeonMap, from: Vec2): Set<string> {
       if (!map.canStep(cur, d)) continue;
       const nxt = addVec(cur, DIR_VEC[d]);
       const k = keyOf(nxt);
-      if (seen.has(k)) continue;
+      if (seen.has(k) || blocked?.(nxt)) continue;
       seen.add(k);
       queue.push(nxt);
     }

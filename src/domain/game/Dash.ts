@@ -39,7 +39,7 @@ export class DashRunner {
   step(): boolean {
     if (!this.dir) return false;
     const st = this.session.state;
-    if (st.status !== 'playing' || this.steps >= this.maxSteps || DashRunner.enemyVisible(st)) {
+    if (st.status !== 'playing' || this.steps >= this.maxSteps || DashRunner.enemyVisible(st) || DashRunner.rockVisible(st)) {
       this.stop();
       return false;
     }
@@ -77,6 +77,7 @@ export class DashRunner {
       this.session.log.all.length !== logBefore ||
       st.player.hp < hpBefore ||
       DashRunner.enemyVisible(st) ||
+      DashRunner.rockVisible(st) ||
       (crossedDoorway && this.steps > 1) ||
       st.status !== 'playing'
     ) {
@@ -88,6 +89,16 @@ export class DashRunner {
 
   static enemyVisible(st: GameState): boolean {
     return st.monsters.some((m) => m.isAlive && st.visibility.isVisible(m.pos));
+  }
+
+  /** 転がる岩が見えていたら止まる */
+  static rockVisible(st: GameState): boolean {
+    for (const [k, f] of st.allFeatures) {
+      if (f.kind !== 'rock') continue;
+      const [x, y] = k.split(',').map(Number);
+      if (st.visibility.isVisible({ x: x ?? -1, y: y ?? -1 })) return true;
+    }
+    return false;
   }
 
   /**

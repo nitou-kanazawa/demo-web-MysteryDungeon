@@ -8,7 +8,7 @@ import { SpriteArt } from './SpriteArt';
 import { TileArt } from './TileArt';
 import { CodexRenderer } from './CodexRenderer';
 import { Ally } from '../../domain/entity/Ally';
-import { featureSprite } from './sprites/featureSprites';
+import { CAGE_BARS, featureSprite } from './sprites/featureSprites';
 import { paintSprite } from './sprites/PixelSprite';
 import type { AnimationPlayer } from './Animation';
 import { MONSTER_MAP } from '../../domain/data/monsters';
@@ -131,16 +131,22 @@ export class Renderer {
     g.fillRect(0, 0, this.width, this.height);
 
     const frame: 0 | 1 = Math.floor(t / 700) % 2 === 0 ? 0 : 1;
-    g.drawImage(this.tiles.render(state.map, state.theme.id, state.shop?.room, frame), ox, oy);
+    g.drawImage(this.tiles.render(state.map, state.theme.id, state.shop?.room, frame, state.blackMarket?.room), ox, oy);
 
     g.imageSmoothingEnabled = false;
     for (const [key, f] of state.allFeatures) {
-      const sprite = featureSprite(f);
-      if (!sprite) continue;
       const [xs, ys] = key.split(',');
       const x = Number(xs);
       const y = Number(ys);
       if (!state.visibility.isExplored({ x, y })) continue;
+      if (f.kind === 'cage') {
+        const def = MONSTER_MAP.get(f.defId);
+        if (def) this.sprites.drawCreature(g, def, ox + x * TILE + TILE / 2, oy + y * TILE + TILE / 2, t, (TILE / 32) * 0.8);
+        paintSprite(g, CAGE_BARS, ox + x * TILE, oy + y * TILE, TILE / 32);
+        continue;
+      }
+      const sprite = featureSprite(f);
+      if (!sprite) continue;
       paintSprite(g, sprite, ox + x * TILE, oy + y * TILE, TILE / 32);
     }
 

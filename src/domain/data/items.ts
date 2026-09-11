@@ -40,6 +40,9 @@ export const ITEM_DEFS: readonly ItemDef[] = [
   { id: 'iron_lump', name: 'てつのかたまり', category: 'material', price: 200, description: '錬金の素材。武具を強くする。' },
   { id: 'holy_water', name: 'せいすい', category: 'material', price: 150, description: '錬金の素材。清らかな水。' },
   { id: 'monster_fang', name: 'まもののキバ', category: 'material', price: 400, description: '錬金の素材。鋭いキバ。' },
+  // 道具
+  { id: 'torch', name: 'たいまつ', category: 'tool', price: 120, effect: { kind: 'refuelTorch', amount: 200 }, description: '松明の火を大きくする（200ターン分）。' },
+  { id: 'key', name: '宝物庫のカギ', category: 'material', price: 500, description: '鍵のかかった扉や檻を開ける。使うと無くなる。' },
   // ゴールド
   { id: 'gold', name: 'ゴールド', category: 'gold', price: 0, goldAmount: 1, description: 'お金。' },
 ];

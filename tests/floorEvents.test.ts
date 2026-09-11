@@ -6,7 +6,7 @@ import { DIRECTIONS, DIR_VEC, addVec, type Vec2 } from '../src/domain/core/Vec2'
 import { DEFAULT_FLOOR_CONFIG } from '../src/domain/data/spawnTables';
 
 function toFloor(seed: number, floor: number) {
-  const s = new GameSession(seed, { floorConfig: { ...DEFAULT_FLOOR_CONFIG, monsterHouseChance: 0, shopChance: 0, guardianChance: 0 } });
+  const s = new GameSession(seed, { floorConfig: { ...DEFAULT_FLOOR_CONFIG, monsterHouseChance: 0, shopChance: 0, guardianChance: 0, alternativeThemes: false, mazeChance: 0, bigRoomChance: 0, rollingRockChance: 0, switchChance: 0, vaultChance: 0, cageChance: 0, fogChance: 0, blackMarketChance: 0 } });
   for (let i = 1; i < floor; i++) {
     s.state.player.pos = s.state.map.stairs;
     s.execute({ type: 'descend' });

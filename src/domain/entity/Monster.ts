@@ -10,6 +10,8 @@ export class Monster extends Actor {
   asleep = false;
   /** 番人（階段の部屋のボス）。HP2倍・経験値2倍・撃破時にアイテムを落とす */
   guardian = false;
+  /** 暗黒テーマなどで上乗せされる攻撃力 */
+  atkBonus = 0;
 
   constructor(
     id: number,
@@ -41,7 +43,7 @@ export class Monster extends Actor {
   }
 
   get atk(): number {
-    return this.definition.atk;
+    return this.definition.atk + this.atkBonus;
   }
   get def(): number {
     return this.definition.def;

@@ -12,6 +12,8 @@ export enum TileType {
   Ice = 6,
   /** 溶岩: 歩けるがターン終了時にダメージ。投げ物は燃える */
   Lava = 7,
+  /** 鏡: 歩けない。投擲物・魔法弾・ブレスを反射する */
+  Mirror = 8,
 }
 
 export const isWalkableTile = (t: TileType): boolean =>
@@ -21,7 +23,11 @@ export const isWalkableTile = (t: TileType): boolean =>
 export const isRoomFloor = (t: TileType): boolean => t === TileType.Floor || t === TileType.Ice;
 
 /** 投擲物・魔法弾・ブレスを遮るか */
-export const blocksProjectile = (t: TileType): boolean => t === TileType.Wall;
+export const blocksProjectile = (t: TileType): boolean => t === TileType.Wall || t === TileType.Mirror;
+
+/** 投擲物を反射するタイル */
+export const reflectsProjectile = (t: TileType): boolean => t === TileType.Mirror;
 
 /** 部屋・通路の外側を埋めるタイル（壁／水／空） */
-export const isSolidTile = (t: TileType): boolean => t === TileType.Wall || t === TileType.Water || t === TileType.Void;
+export const isSolidTile = (t: TileType): boolean =>
+  t === TileType.Wall || t === TileType.Water || t === TileType.Void || t === TileType.Mirror;

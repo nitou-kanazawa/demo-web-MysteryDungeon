@@ -21,7 +21,8 @@ export class Lighting {
 
     const profile = state.theme.lighting;
     og.globalCompositeOperation = 'source-over';
-    og.fillStyle = state.theme.id === 'sky' ? 'rgb(12,18,40)' : state.theme.id === 'water' ? 'rgb(2,6,18)' : 'rgb(3,2,8)';
+    og.fillStyle =
+      state.theme.id === 'sky' ? 'rgb(12,18,40)' : state.theme.id === 'water' ? 'rgb(2,6,18)' : state.theme.id === 'dark' ? 'rgb(0,0,2)' : 'rgb(3,2,8)';
     og.fillRect(0, 0, w, h);
 
     // 探索済み: 記憶の薄明かり
@@ -49,7 +50,9 @@ export class Lighting {
     const flicker = 1 + Math.sin(t / 90) * 0.035 + Math.sin(t / 37) * 0.02;
     const cx = (player.pos.x + 0.5) * TILE;
     const cy = (player.pos.y + 0.5) * TILE;
-    const radius = TILE * profile.torchRadius * flicker;
+    // 松明の燃料が減ると光が小さくなる（0 でも最低限の明かりは残す）
+    const fuel = Math.max(0.35, Math.min(1, player.torch / 300));
+    const radius = TILE * profile.torchRadius * flicker * fuel;
     const torch = og.createRadialGradient(cx, cy, TILE * 0.5, cx, cy, radius);
     torch.addColorStop(0, 'rgba(0,0,0,1)');
     torch.addColorStop(0.45, 'rgba(0,0,0,0.85)');
@@ -105,6 +108,17 @@ export class Lighting {
     g.fillStyle = warm;
     g.fillRect(ox + cx - radius, oy + cy - radius, radius * 2, radius * 2);
     g.globalCompositeOperation = 'source-over';
+    // 霧: 視界内に灰色の霞を重ねる
+    if (state.fog) {
+      const drift = Math.sin(t / 900) * 6;
+      g.fillStyle = 'rgba(190,200,215,0.18)';
+      g.fillRect(ox, oy, w, h);
+      g.fillStyle = 'rgba(220,228,240,0.10)';
+      for (let i = 0; i < 4; i++) {
+        const fy = oy + ((i * 137 + drift * (i + 1)) % h);
+        g.fillRect(ox, fy, w, 14);
+      }
+    }
     g.restore();
   }
 

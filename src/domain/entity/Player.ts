@@ -9,6 +9,9 @@ export interface PlayerConfig {
   readonly def: number;
   readonly maxHunger: number;
   readonly inventoryCapacity: number;
+  /** 松明の初期燃料と上限（ターン） */
+  readonly torch: number;
+  readonly maxTorch: number;
 }
 
 export const DEFAULT_PLAYER_CONFIG: PlayerConfig = {
@@ -17,6 +20,8 @@ export const DEFAULT_PLAYER_CONFIG: PlayerConfig = {
   def: 1,
   maxHunger: 100,
   inventoryCapacity: 20,
+  torch: 300,
+  maxTorch: 400,
 };
 
 export class Player extends Actor {
@@ -28,6 +33,9 @@ export class Player extends Actor {
   readonly maxHunger: number;
   gold = 0;
   facing: Direction = 'S';
+  /** 松明の燃料（ターン）。0 になると暗闇 */
+  torch: number;
+  readonly maxTorch: number;
   readonly inventory: Inventory;
   weapon: ItemInstance | undefined;
   shield: ItemInstance | undefined;
@@ -38,6 +46,8 @@ export class Player extends Actor {
     this.baseDef = config.def;
     this.maxHunger = config.maxHunger;
     this.hunger = config.maxHunger;
+    this.torch = config.torch;
+    this.maxTorch = config.maxTorch;
     this.inventory = new Inventory(config.inventoryCapacity);
   }
 

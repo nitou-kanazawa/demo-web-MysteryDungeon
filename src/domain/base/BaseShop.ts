@@ -5,7 +5,7 @@ import type { ItemDef } from '../item/ItemDef';
 /** 武器屋の品揃え候補（定価で販売） */
 const WEAPON_POOL = ['copper_sword', 'iron_sword'];
 const SHIELD_POOL = ['scale_shield', 'iron_shield'];
-const GOODS_POOL = ['herb', 'herb', 'good_herb', 'bread', 'big_bread', 'scroll_light', 'scroll_escape', 'scroll_search', 'staff_paralyze', 'pot_storage', 'iron_lump', 'holy_water'];
+const GOODS_POOL = ['herb', 'herb', 'good_herb', 'bread', 'big_bread', 'scroll_light', 'scroll_escape', 'scroll_search', 'staff_paralyze', 'pot_storage', 'iron_lump', 'holy_water', 'torch', 'torch'];
 
 /**
  * 拠点の武器屋。品揃えは「出撃回数」をシードに決定論的に生成し、出撃するたびに入れ替わる。

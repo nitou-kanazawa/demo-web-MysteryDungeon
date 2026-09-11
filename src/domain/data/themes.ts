@@ -1,6 +1,6 @@
 import { TileType } from '../map/Tile';
 
-export type DungeonTheme = 'cave' | 'water' | 'ice' | 'volcano' | 'sky';
+export type DungeonTheme = 'cave' | 'water' | 'ice' | 'volcano' | 'sky' | 'ruins' | 'dark';
 
 /** ライティングの見え方（0..1）。値が大きいほど明るい */
 export interface LightingProfile {
@@ -23,6 +23,14 @@ export interface ThemeDef {
   readonly solid: TileType;
   readonly description: string;
   readonly lighting: LightingProfile;
+  /** 生成レイアウト（省略時は sectors） */
+  readonly layout?: 'sectors' | 'town';
+  /** 部屋の中でも視界がこの半径まで（暗黒） */
+  readonly sightRadius?: number;
+  /** 敵の攻撃力への上乗せ */
+  readonly monsterAtkBonus?: number;
+  /** 同じフロア帯に候補が複数あるとき、先頭以外は乱数で選ばれる */
+  readonly alternativeOf?: DungeonTheme;
 }
 
 export const THEME_DEFS: readonly ThemeDef[] = [
@@ -63,6 +71,29 @@ export const THEME_DEFS: readonly ThemeDef[] = [
     lighting: { explored: 0.2, visible: 0.45, torchRadius: 6, warm: 1.2 },
   },
   {
+    id: 'ruins',
+    name: '廃墟の街',
+    minFloor: 5,
+    maxFloor: 6,
+    solid: TileType.Wall,
+    description: '崩れた家々が並ぶ地下の街。店や鍛冶屋が今も商いを続けている。',
+    lighting: { explored: 0.3, visible: 0.6, torchRadius: 7, warm: 0.8 },
+    layout: 'town',
+    alternativeOf: 'ice',
+  },
+  {
+    id: 'dark',
+    name: '暗黒の回廊',
+    minFloor: 7,
+    maxFloor: 8,
+    solid: TileType.Wall,
+    description: '光の届かない闇。松明の火だけが頼りで、魔物は闇の中で牙を研ぐ。',
+    lighting: { explored: 0.12, visible: 0.3, torchRadius: 3, warm: 1.1 },
+    sightRadius: 1,
+    monsterAtkBonus: 3,
+    alternativeOf: 'volcano',
+  },
+  {
     id: 'sky',
     name: '天空の浮島',
     minFloor: 9,
@@ -75,6 +106,19 @@ export const THEME_DEFS: readonly ThemeDef[] = [
 
 export const THEME_MAP: ReadonlyMap<DungeonTheme, ThemeDef> = new Map(THEME_DEFS.map((t) => [t.id, t]));
 
+/** フロア帯の既定テーマ（帯の先頭。cave/water/ice/volcano/sky） */
 export function themeForFloor(floor: number): ThemeDef {
-  return THEME_DEFS.find((t) => floor >= t.minFloor && floor <= t.maxFloor) ?? (THEME_DEFS[0] as ThemeDef);
+  return THEME_DEFS.find((t) => floor >= t.minFloor && floor <= t.maxFloor && !t.alternativeOf) ?? (THEME_DEFS[0] as ThemeDef);
+}
+
+/** フロア帯の候補テーマ（既定＋代替） */
+export function themesForFloor(floor: number): ThemeDef[] {
+  return THEME_DEFS.filter((t) => floor >= t.minFloor && floor <= t.maxFloor);
+}
+
+/** フロア到着時に候補から 1 つ選ぶ。候補が複数あれば乱数で決める */
+export function pickTheme(floor: number, pick: <T>(items: readonly T[]) => T): ThemeDef {
+  const candidates = themesForFloor(floor);
+  if (candidates.length <= 1) return candidates[0] ?? themeForFloor(floor);
+  return pick(candidates);
 }

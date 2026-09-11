@@ -172,7 +172,7 @@ describe('鍛冶屋', () => {
 
 describe('番人', () => {
   function withGuardian(seed: number) {
-    const s = new GameSession(seed, { floorConfig: { ...DEFAULT_FLOOR_CONFIG, guardianChance: 1, monsterHouseChance: 0, shopChance: 0 } });
+    const s = new GameSession(seed, { floorConfig: { ...DEFAULT_FLOOR_CONFIG, guardianChance: 1, monsterHouseChance: 0, shopChance: 0, blackMarketChance: 0, mazeChance: 0, bigRoomChance: 0 } });
     for (let i = 0; i < 3; i++) {
       s.state.player.pos = s.state.map.stairs;
       s.execute({ type: 'descend' });

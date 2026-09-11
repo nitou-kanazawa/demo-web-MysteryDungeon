@@ -33,6 +33,7 @@ export const ITEM_SPAWN_TABLE: readonly ItemSpawnEntry[] = [
   { defId: 'iron_lump', weight: 5, minFloor: 2, maxFloor: 10 },
   { defId: 'holy_water', weight: 5, minFloor: 1, maxFloor: 10 },
   { defId: 'monster_fang', weight: 3, minFloor: 5, maxFloor: 10 },
+  { defId: 'torch', weight: 5, minFloor: 1, maxFloor: 10 },
   { defId: 'gold', weight: 10, minFloor: 1, maxFloor: 10 },
 ];
 
@@ -62,6 +63,26 @@ export interface FloorConfig {
   readonly blacksmithChance: number;
   /** 番人が階段の部屋に現れる確率（4F 以降） */
   readonly guardianChance: number;
+  /** 宝物庫（鍵と扉）の確率（2F 以降） */
+  readonly vaultChance: number;
+  /** 囚われた仲間（檻）の確率（2F 以降） */
+  readonly cageChance: number;
+  /** 反射壁（鏡）の確率（壁テーマの 2F 以降） */
+  readonly mirrorChance: number;
+  /** スイッチの確率（2F 以降） */
+  readonly switchChance: number;
+  /** 霧の確率（3F 以降） */
+  readonly fogChance: number;
+  /** 転がる岩の確率（3F 以降） */
+  readonly rollingRockChance: number;
+  /** 闇市の確率（4F 以降、店が無いとき） */
+  readonly blackMarketChance: number;
+  /** 迷路フロアの確率（3F 以降） */
+  readonly mazeChance: number;
+  /** 大部屋フロアの確率（3F 以降） */
+  readonly bigRoomChance: number;
+  /** フロア帯の代替テーマ（廃墟・暗黒）を抽選するか */
+  readonly alternativeThemes: boolean;
 }
 
 export const DEFAULT_FLOOR_CONFIG: FloorConfig = {
@@ -79,4 +100,14 @@ export const DEFAULT_FLOOR_CONFIG: FloorConfig = {
   trapsPerFloor: [2, 5],
   blacksmithChance: 0.25,
   guardianChance: 0.25,
+  vaultChance: 0.25,
+  cageChance: 0.2,
+  mirrorChance: 0.4,
+  switchChance: 0.35,
+  fogChance: 0.15,
+  rollingRockChance: 0.3,
+  blackMarketChance: 0.15,
+  mazeChance: 0.1,
+  bigRoomChance: 0.1,
+  alternativeThemes: true,
 };

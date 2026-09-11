@@ -53,9 +53,13 @@ export class HudRenderer {
     g.fillText(`攻 ${p.atk}  守 ${p.def}`, 470, y);
     g.fillStyle = '#fbbf24';
     g.fillText(`${p.gold} G`, 590, y);
+    const torchColor = p.torch === 0 ? '#f85149' : p.torch <= 60 ? '#d29922' : '#fb923c';
+    g.fillStyle = torchColor;
+    g.font = `bold 13px ${FONT}`;
+    g.fillText(`松明 ${p.torch}`, 680, y - 7);
     g.fillStyle = '#9ca3af';
     g.font = `13px ${FONT}`;
-    g.fillText(`Turn ${session.state.turn}`, 680, y);
+    g.fillText(`Turn ${session.state.turn}`, 680, y + 8);
     const st = p.activeStatuses.map((k) => STATUS_LABEL[k]).join(' ');
     if (st) {
       g.fillStyle = '#c084fc';

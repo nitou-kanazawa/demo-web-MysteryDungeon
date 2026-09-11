@@ -84,6 +84,58 @@ const CRACK: PixelSprite = new PixelCanvas()
   .line(4, 6, 14, 14, 'c').line(14, 14, 10, 24, 'c').line(14, 14, 26, 10, 'c').line(20, 12, 24, 26, 'c')
   .toSprite({ c: '#1f2937' });
 
+/** 鍵のかかった扉 */
+const DOOR: PixelSprite = new PixelCanvas()
+  .rect(4, 2, 24, 28, 'w')
+  .rect(6, 4, 20, 24, 'p')
+  .rect(15, 4, 2, 24, 'w')
+  .rect(6, 15, 20, 2, 'w')
+  .ellipse(21, 18, 2, 2, 'k')
+  .rect(20, 19, 2, 3, 'k')
+  .outline('#')
+  .toSprite({ '#': '#2a1608', w: '#5c3a1e', p: '#8b5a2b', k: '#fbbf24' });
+
+/** 格子（スイッチで開く） */
+const GATE: PixelSprite = new PixelCanvas()
+  .rect(3, 1, 26, 3, 'i')
+  .rect(3, 28, 26, 3, 'i')
+  .rect(5, 1, 3, 30, 'i').rect(12, 1, 3, 30, 'i').rect(19, 1, 3, 30, 'i').rect(25, 1, 3, 30, 'i')
+  .rect(3, 14, 26, 2, 'i')
+  .stamp(6, 3, ['h']).stamp(13, 3, ['h']).stamp(20, 3, ['h']).stamp(26, 3, ['h'])
+  .outline('#')
+  .toSprite({ '#': '#1c1917', i: '#6b7280', h: '#9ca3af' });
+
+/** スイッチ（未作動） */
+const SWITCH_OFF: PixelSprite = new PixelCanvas()
+  .rect(7, 20, 18, 8, 's')
+  .rect(9, 16, 14, 5, 'b')
+  .rect(11, 17, 10, 2, 'h')
+  .outline('#')
+  .toSprite({ '#': '#1c1917', s: '#57534e', b: '#dc2626', h: '#f87171' });
+
+/** スイッチ（作動済み: 沈んだ） */
+const SWITCH_ON: PixelSprite = new PixelCanvas()
+  .rect(7, 20, 18, 8, 's')
+  .rect(9, 21, 14, 3, 'b')
+  .outline('#')
+  .toSprite({ '#': '#1c1917', s: '#57534e', b: '#16a34a' });
+
+/** 檻（中の魔物の上に重ねる） */
+export const CAGE_BARS: PixelSprite = new PixelCanvas()
+  .rect(2, 1, 28, 2, 'i')
+  .rect(2, 28, 28, 3, 'i')
+  .rect(3, 1, 2, 30, 'i').rect(10, 1, 2, 30, 'i').rect(17, 1, 2, 30, 'i').rect(24, 1, 2, 30, 'i').rect(28, 1, 2, 30, 'i')
+  .stamp(14, 0, ['ll', 'll'])
+  .toSprite({ i: '#a16207', l: '#fbbf24' });
+
+/** 転がる岩 */
+const ROCK: PixelSprite = new PixelCanvas()
+  .ellipse(15.5, 16, 12, 12, 'r')
+  .ellipse(11, 12, 4, 3, 'h')
+  .stamp(18, 17, ['d', 'dd']).stamp(8, 21, ['dd']).stamp(20, 9, ['d'])
+  .outline('#')
+  .toSprite({ '#': '#1c1917', r: '#57534e', h: '#78716c', d: '#292524' });
+
 const TRAP_SPRITES: Readonly<Record<TrapKind, PixelSprite>> = {
   pitfall: PITFALL,
   mine: MINE,
@@ -108,6 +160,17 @@ export function featureSprite(f: TileFeature): PixelSprite | undefined {
       return BOULDER;
     case 'crack':
       return CRACK;
+    case 'door':
+      return DOOR;
+    case 'gate':
+      return GATE;
+    case 'switch':
+      return f.active ? SWITCH_ON : SWITCH_OFF;
+    case 'cage':
+      // 中の魔物は Renderer が描き、その上に格子を重ねる
+      return undefined;
+    case 'rock':
+      return ROCK;
   }
 }
 
@@ -119,6 +182,12 @@ export const ALL_FEATURE_SPRITES: Readonly<Record<string, PixelSprite>> = {
   sign: SIGN,
   boulder: BOULDER,
   crack: CRACK,
+  door: DOOR,
+  gate: GATE,
+  switch_off: SWITCH_OFF,
+  switch_on: SWITCH_ON,
+  cage: CAGE_BARS,
+  rock: ROCK,
 };
 
 /** 鍛冶屋のドワーフ（スキンに関係なく共通） */

@@ -8,6 +8,7 @@ export type ItemCategory =
   | 'staff'
   | 'pot'
   | 'material'
+  | 'tool'
   | 'gold';
 
 export type PotKind = 'storage' | 'alchemy' | 'merge' | 'change';
@@ -28,7 +29,9 @@ export type ItemEffect =
   | { readonly kind: 'boltDamage'; readonly amount: number }
   | { readonly kind: 'escape' }
   | { readonly kind: 'revealTraps' }
-  | { readonly kind: 'boltTrap' };
+  | { readonly kind: 'boltTrap' }
+  /** 松明の燃料を補給する */
+  | { readonly kind: 'refuelTorch'; readonly amount: number };
 
 export interface ItemDef {
   readonly id: string;
@@ -65,6 +68,7 @@ export const CATEGORY_LABEL: Readonly<Record<ItemCategory, string>> = {
   staff: '杖',
   pot: '壺',
   material: '素材',
+  tool: '道具',
   gold: 'ゴールド',
 };
 
@@ -76,8 +80,8 @@ export const POT_KIND_LABEL: Readonly<Record<PotKind, string>> = {
 };
 
 /** 整頓時の並び順 */
-export const CATEGORY_ORDER: readonly ItemCategory[] = ['weapon', 'shield', 'staff', 'pot', 'herb', 'seed', 'food', 'scroll', 'material', 'gold'];
+export const CATEGORY_ORDER: readonly ItemCategory[] = ['weapon', 'shield', 'staff', 'pot', 'herb', 'seed', 'food', 'scroll', 'tool', 'material', 'gold'];
 
 export const isEquipment = (def: ItemDef): boolean => def.category === 'weapon' || def.category === 'shield';
 export const isConsumable = (def: ItemDef): boolean =>
-  def.category === 'food' || def.category === 'herb' || def.category === 'seed' || def.category === 'scroll';
+  def.category === 'food' || def.category === 'herb' || def.category === 'seed' || def.category === 'scroll' || def.category === 'tool';

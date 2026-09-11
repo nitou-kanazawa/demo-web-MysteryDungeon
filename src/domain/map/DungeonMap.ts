@@ -1,11 +1,16 @@
 import { DIR_VEC, isDiagonal, type Direction, type Vec2, addVec } from '../core/Vec2';
 import { Room } from './Room';
 import { TileType, blocksProjectile, isWalkableTile } from './Tile';
+import type { CorridorInfo } from './DungeonGenerator';
 
 /** ダンジョン1フロアの地形。地形以外（アクター・アイテム）は持たない */
 export class DungeonMap {
   private readonly tiles: TileType[];
   readonly rooms: Room[] = [];
+  /** 掘った通路の記録（生成器が登録） */
+  readonly corridors: CorridorInfo[] = [];
+  /** 掘らなかった接続の経路（スイッチで架かる橋の候補） */
+  readonly unusedPaths: Vec2[][] = [];
   private stairsPos: Vec2 | undefined;
   /** タイルが書き換わるたびに増える（描画キャッシュの無効化用） */
   version = 0;

@@ -90,6 +90,25 @@ const GEM: PixelSprite = new PixelCanvas()
   .outline('#')
   .toSprite({ '#': '#1e293b', g: '#94a3b8', l: '#e2e8f0' });
 
+/** たいまつ */
+const TORCH: PixelSprite = new PixelCanvas()
+  .line(13, 28, 17, 14, 'w', 3)
+  .rect(13, 12, 6, 4, 'b')
+  .ellipse(15.5, 8, 5, 6, 'f')
+  .ellipse(15.5, 9, 3, 4, 'y')
+  .stamp(15, 3, ['s'])
+  .outline('#')
+  .toSprite({ '#': '#3a1a05', w: '#8b5a2b', b: '#4b2e13', f: '#f97316', y: '#fde047', s: '#fff7ae' });
+
+/** カギ */
+const KEY: PixelSprite = new PixelCanvas()
+  .ellipse(10, 11, 5, 5, 'k')
+  .ellipse(10, 11, 2, 2, 'h')
+  .line(14, 13, 25, 24, 'k', 3)
+  .stamp(22, 24, ['kk', 'k']).stamp(19, 21, ['.k', 'kk'])
+  .outline('#')
+  .toSprite({ '#': '#5a3a05', k: '#fbbf24', h: '#1c1917' });
+
 /** 金貨 */
 const COIN: PixelSprite = new PixelCanvas()
   .ellipse(15.5, 16, 10, 10, 'c')
@@ -109,7 +128,13 @@ const BY_CATEGORY: Readonly<Record<ItemCategory, PixelSprite>> = {
   staff: STAFF,
   pot: POT,
   material: GEM,
+  tool: TORCH,
   gold: COIN,
+};
+
+/** 定義 ID ごとの専用スプライト */
+const BY_ID_SPRITE: Readonly<Record<string, PixelSprite>> = {
+  key: KEY,
 };
 
 /** 定義ごとの色差し替え（種類内のバリエーション） */
@@ -150,7 +175,7 @@ const cache = new Map<string, PixelSprite>();
 export function itemSprite(def: ItemDef): PixelSprite {
   const hit = cache.get(def.id);
   if (hit) return hit;
-  const base = BY_CATEGORY[def.category];
+  const base = BY_ID_SPRITE[def.id] ?? BY_CATEGORY[def.category];
   const override = def.category === 'pot' && def.potKind ? POT_COLORS[def.potKind] : BY_ID[def.id];
   const sprite = override ? recolor(base, override) : base;
   cache.set(def.id, sprite);

@@ -40,6 +40,8 @@ import { chebyshev } from '../core/Vec2';
 import { CollapseEvent, RefreezeEvent } from './FloorEvent';
 import { VisualSink } from './VisualEvent';
 import type { ItemSnapshot } from '../item/ItemSnapshot';
+import { traceProjectile } from './Projectile';
+import { effectiveSightRadius } from './Sight';
 
 export interface SessionOptions {
   readonly floorConfig?: FloorConfig;
@@ -135,6 +137,7 @@ export class GameSession {
         teleportPlayer: () => {
           this.effects.applySelf({ kind: 'teleport' });
         },
+        maxAllies: this.config.maxAllies,
       },
       this.visuals,
     );
@@ -152,6 +155,17 @@ export class GameSession {
 
     this.floors.build(this.state, this.rng);
     this.log.push(`ダンジョン ${this.state.floor}F。最深部 ${this.config.maxFloor}F の階段を目指せ！`);
+    this.announceFloor(undefined);
+  }
+
+  /** フロア到着時の案内（テーマの変化・霧・フロアの形） */
+  private announceFloor(prevTheme: string | undefined): void {
+    const s = this.state;
+    if (prevTheme !== undefined && s.theme.id !== prevTheme) this.log.push(`ここは「${s.theme.name}」。${s.theme.description}`);
+    if (s.fog) this.log.push('霧が濃い… 遠くが見えない。');
+    if (s.layout === 'maze') this.log.push('入り組んだ迷路だ。通路の先に広間がある。');
+    if (s.layout === 'bigRoom') this.log.push('巨大な一部屋だ！ 階段は遠い。');
+    if (s.blackMarket) this.log.push('店主のいない店の気配がする… 出口には番人がいるらしい。');
   }
 
   /** seed とコマンド列から同じ状態を再構築する */
@@ -268,7 +282,12 @@ export class GameSession {
     p.facing = dir;
     if (!this.state.map.canStep(p.pos, dir)) return { consumedTurn: false };
     const to = addVec(p.pos, DIR_VEC[dir]);
-    if (this.state.featureAt(to)?.kind === 'boulder') {
+    const blocker = this.state.featureAt(to);
+    if (blocker?.kind === 'door') return { consumedTurn: this.features.openDoor(p, to) };
+    if (blocker?.kind === 'cage') return { consumedTurn: this.features.openCage(p, to) };
+    if (blocker?.kind === 'gate') return { consumedTurn: false, message: '格子が閉まっている。どこかにスイッチがあるはずだ。' };
+    if (blocker?.kind === 'rock') return { consumedTurn: false, message: '転がる岩だ！ 近づくと危ない。' };
+    if (blocker?.kind === 'boulder') {
       if (!this.features.pushBoulder(p.pos, dir)) return { consumedTurn: false };
       const from = p.pos;
       p.pos = to;
@@ -346,7 +365,7 @@ export class GameSession {
     this.floors.build(this.state, this.rng);
     this.visuals.emit({ type: 'floor' });
     this.log.push(`${this.state.floor}F に落ちた！`);
-    if (this.state.theme.id !== prevTheme) this.log.push(`ここは「${this.state.theme.name}」。${this.state.theme.description}`);
+    this.announceFloor(prevTheme);
   }
 
   /** モンスターハウスに足を踏み入れたら中の敵を起こす */
@@ -405,7 +424,7 @@ export class GameSession {
     this.floors.build(this.state, this.rng);
     this.visuals.emit({ type: 'floor' });
     this.log.push(`${this.state.floor}F に降りた。`);
-    if (this.state.theme.id !== prevTheme) this.log.push(`ここは「${this.state.theme.name}」。${this.state.theme.description}`);
+    this.announceFloor(prevTheme);
     return { consumedTurn: false };
   }
 
@@ -497,17 +516,12 @@ export class GameSession {
     p.inventory.remove(item);
     this.log.push(`${item.displayName}を投げた！`);
 
-    // 水や空の上は飛び越えられる。岩壁と相手に当たると止まる
-    let last = p.pos;
-    let hit: Actor | undefined;
-    for (let i = 0; i < 10; i++) {
-      const next = addVec(last, DIR_VEC[p.facing]);
-      if (!this.state.map.passesProjectile(next) || this.state.featureAt(next)?.kind === 'boulder') break;
-      hit = this.state.actorAt(next);
-      if (hit) break;
-      last = next;
-    }
-    this.visuals.emit({ type: 'projectile', from: p.pos, to: hit ? hit.pos : last, kind: 'item', itemDefId: item.def.id });
+    // 水や空の上は飛び越えられる。岩壁と相手に当たると止まる。鏡に当たると戻ってくる
+    const trace = traceProjectile(this.state, p.pos, p.facing, 10);
+    const last = trace.end;
+    const hit: Actor | undefined = trace.hit;
+    for (const seg of trace.segments) this.visuals.emit({ type: 'projectile', from: seg.from, to: seg.to, kind: 'item', itemDefId: item.def.id });
+    if (trace.reflected) this.log.push(`${item.displayName}は鏡に跳ね返った！`);
     if (hit) {
       const dmg = item.def.throwDamage ?? (item.def.atk ? item.def.atk + item.plus : 2);
       this.actions.dealDamage(p, hit, dmg);
@@ -631,7 +645,19 @@ export class GameSession {
       }
     }
 
-    if (s.turn % this.config.respawnInterval === 0 && s.monsters.length < 10) {
+    // 松明の燃料
+    if (p.torch > 0) {
+      p.torch--;
+      if (p.torch === 60) this.log.push('松明の火が小さくなってきた…');
+      if (p.torch === 0) this.log.push('松明が消えた！ 暗闇だ…');
+    }
+    s.visibility.sightRadius = effectiveSightRadius(s);
+
+    // 危険度: フロアに長くいるほど湧きが早くなる
+    s.floorTurns++;
+    if (s.floorTurns === 150) this.log.push('フロアの空気が重くなってきた…');
+    if (s.floorTurns === 400) this.log.push('魔物の気配が濃くなっている！');
+    if (s.turn % this.respawnInterval() === 0 && s.monsters.length < 10) {
       this.floors.spawnMonster(s, this.rng, true);
     }
 
@@ -643,6 +669,11 @@ export class GameSession {
       }
     }
 
-    for (const e of s.events) e.tick({ state: s, log: this.log });
+    for (const e of s.events) e.tick({ state: s, log: this.log, actions: this.actions, visuals: this.visuals });
+  }
+
+  /** 現在の湧き間隔（150 ターンごとに 8 短くなる。下限 8） */
+  respawnInterval(): number {
+    return Math.max(8, this.config.respawnInterval - Math.floor(this.state.floorTurns / 150) * 8);
   }
 }

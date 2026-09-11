@@ -18,8 +18,9 @@ export interface MonsterHouseState {
 }
 import type { Shopkeeper } from '../entity/Shopkeeper';
 import type { Npc } from '../entity/Npc';
-import type { TileFeature } from './TileFeature';
+import { blocksMovement, blocksProjectileFeature, type TileFeature } from './TileFeature';
 import type { FloorEvent } from './FloorEvent';
+import type { DungeonLayout } from '../map/DungeonGenerator';
 
 /** フロアの店。keeper が undefined なら店主は敵化済み */
 export interface ShopState {
@@ -28,6 +29,11 @@ export interface ShopState {
 }
 
 export type GameStatus = 'playing' | 'dead' | 'won' | 'escaped';
+
+/** 闇市: 店主のいない店。出口に番人が眠っている */
+export interface BlackMarketState {
+  readonly room: Room;
+}
 
 /** 1プレイの可変状態をまとめたコンテナ。ロジックは持たない */
 export class GameState {
@@ -44,6 +50,15 @@ export class GameState {
   npcs: Npc[] = [];
   /** フロアで毎ターン進む出来事 */
   events: FloorEvent[] = [];
+  blackMarket: BlackMarketState | undefined;
+  /** 霧: 部屋の中でも視界が狭い */
+  fog = false;
+  /** このフロアに到着してからのターン数（危険度） */
+  floorTurns = 0;
+  /** フロアの形（迷路・大部屋など） */
+  layout: DungeonLayout = 'sectors';
+  /** 鍵のかかった扉の内側のマス（敵・アイテムを勝手に置かない） */
+  readonly lockedTiles = new Set<string>();
   private readonly features = new Map<string, TileFeature>();
   theme: ThemeDef = themeForFloor(1);
   /** 仲間への作戦 */
@@ -66,6 +81,10 @@ export class GameState {
     this.monsterHouse = undefined;
     this.npcs = [];
     this.events = [];
+    this.blackMarket = undefined;
+    this.fog = false;
+    this.floorTurns = 0;
+    this.lockedTiles.clear();
     this.features.clear();
     this.ground.clear();
   }
@@ -89,9 +108,14 @@ export class GameState {
     );
   }
 
-  /** アクターか岩がいて入れない */
+  /** アクターか、岩・扉・格子・檻があって入れない */
   isOccupied(p: Vec2): boolean {
-    return this.actorAt(p) !== undefined || this.featureAt(p)?.kind === 'boulder';
+    return this.actorAt(p) !== undefined || blocksMovement(this.featureAt(p));
+  }
+
+  /** 岩・扉・格子・檻が投擲物を遮る */
+  blocksProjectileAt(p: Vec2): boolean {
+    return blocksProjectileFeature(this.featureAt(p));
   }
 
   itemAt(p: Vec2): ItemInstance | undefined {

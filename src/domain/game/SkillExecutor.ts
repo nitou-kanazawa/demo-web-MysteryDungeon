@@ -1,5 +1,5 @@
 import type { IRng } from '../core/Rng';
-import { DIR_VEC, addVec, dirFromDelta, type Vec2 } from '../core/Vec2';
+import { dirFromDelta, type Vec2 } from '../core/Vec2';
 import { TileType } from '../map/Tile';
 import type { SkillDef } from '../data/skills';
 import type { Actor } from '../entity/Actor';
@@ -8,6 +8,7 @@ import { calcDamage } from './Combat';
 import type { GameState } from './GameState';
 import type { MessageLog } from './MessageLog';
 import { POPUP_COLORS, type VisualSink } from './VisualEvent';
+import { traceProjectile } from './Projectile';
 
 /** 敵対関係。中立（店主）はどちらとも敵対しない */
 export function isHostile(a: Actor, b: Actor): boolean {
@@ -41,27 +42,28 @@ export class SkillExecutor {
       case 'breath': {
         const dir = dirFromDelta(target.pos.x - user.pos.x, target.pos.y - user.pos.y);
         if (!dir) break;
-        let p = user.pos;
-        let hit = 0;
         let melted = 0;
-        for (let i = 0; i < skill.range; i++) {
-          const next = addVec(p, DIR_VEC[dir]);
-          if (!this.state.map.passesProjectile(next)) break;
-          p = next;
-          if (this.state.map.get(p) === TileType.Ice && !this.state.isOccupied(p)) {
-            this.state.map.set(p, TileType.Water);
-            this.onIceMelted?.(p);
-            melted++;
-          }
-          const a = this.state.actorAt(p);
-          if (a && isHostile(user, a)) {
-            this.actions.dealDamage(user, a, skill.power);
-            hit++;
-          }
+        const burned = new Set<Actor>();
+        const trace = traceProjectile(this.state, user.pos, dir, skill.range, {
+          stopAtActor: false,
+          onTile: (p) => {
+            if (this.state.map.get(p) === TileType.Ice && !this.state.isOccupied(p)) {
+              this.state.map.set(p, TileType.Water);
+              this.onIceMelted?.(p);
+              melted++;
+            }
+            const a = this.state.actorAt(p);
+            if (a && (isHostile(user, a) || a === user)) burned.add(a);
+          },
+        });
+        for (const seg of trace.segments) this.visuals.emit({ type: 'projectile', from: seg.from, to: seg.to, kind: 'breath', color: '#f97316' });
+        if (trace.reflected) {
+          this.log.push('炎は鏡に反射して戻ってきた！');
+          burned.add(user);
         }
-        if (hit === 0) this.log.push('炎は誰にも当たらなかった。');
+        for (const a of burned) this.actions.dealDamage(user, a, skill.power);
+        if (burned.size === 0) this.log.push('炎は誰にも当たらなかった。');
         if (melted > 0) this.log.push('炎で氷が溶けて水になった！');
-        this.visuals.emit({ type: 'projectile', from: user.pos, to: p, kind: 'breath', color: '#f97316' });
         break;
       }
       case 'drain': {

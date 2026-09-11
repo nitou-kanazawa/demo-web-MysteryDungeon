@@ -4,7 +4,7 @@ import type { Room } from '../../domain/map/Room';
 import type { DungeonTheme } from '../../domain/data/themes';
 import { TILE, hash2 } from './RenderConfig';
 import { paintSprite, type PixelSprite } from './sprites/PixelSprite';
-import { THEME_TILES, THEME_TILES_EXTRA, TILE_SPRITES } from './sprites/tileSprites';
+import { MIRROR_TILE, THEME_TILES, THEME_TILES_EXTRA, TILE_SPRITES } from './sprites/tileSprites';
 
 /**
  * 地形の見た目をオフスクリーンに描画してキャッシュする。
@@ -16,7 +16,7 @@ export class TileArt {
   private cachedVersion = -1;
 
   /** frame: 0 か 1（水・雲のアニメ） */
-  render(map: DungeonMap, theme: DungeonTheme, shopRoom: Room | undefined, frame: 0 | 1): HTMLCanvasElement {
+  render(map: DungeonMap, theme: DungeonTheme, shopRoom: Room | undefined, frame: 0 | 1, marketRoom?: Room): HTMLCanvasElement {
     if (this.cachedMap !== map || this.cachedVersion !== map.version) {
       this.frames.length = 0;
       this.cachedMap = map;
@@ -40,6 +40,7 @@ export class TileArt {
       for (let x = 0; x < map.width; x++) this.drawEdge(g, map, theme, x, y, scale);
     }
     if (shopRoom) this.drawRug(g, shopRoom);
+    if (marketRoom) this.drawRug(g, marketRoom, 'rgba(60,20,90,0.55)', 'rgba(160,120,220,0.6)');
     this.frames[frame] = c;
     return c;
   }
@@ -48,8 +49,10 @@ export class TileArt {
     const t = map.get({ x, y });
     const variant = hash2(x, y, 2) < 0.5 ? 0 : 1;
     const wet = theme === 'water' || theme === 'sky' ? THEME_TILES[theme] : undefined;
-    const extra = theme === 'ice' || theme === 'volcano' ? THEME_TILES_EXTRA[theme] : undefined;
+    const extra = theme === 'ice' || theme === 'volcano' || theme === 'ruins' || theme === 'dark' ? THEME_TILES_EXTRA[theme] : undefined;
     switch (t) {
+      case TileType.Mirror:
+        return MIRROR_TILE;
       case TileType.Wall: {
         const near = this.nearFloor(map, x, y);
         if (extra) return near ? extra.wall : extra.rock;
@@ -87,8 +90,8 @@ export class TileArt {
   private drawEdge(g: CanvasRenderingContext2D, map: DungeonMap, theme: DungeonTheme, x: number, y: number, scale: number): void {
     const t = map.get({ x, y });
     const below = map.get({ x, y: y + 1 });
-    if (theme === 'cave' || theme === 'ice' || theme === 'volcano') {
-      if (t === TileType.Wall && map.isWalkable({ x, y: y + 1 })) {
+    if (theme === 'cave' || theme === 'ice' || theme === 'volcano' || theme === 'ruins' || theme === 'dark') {
+      if ((t === TileType.Wall || t === TileType.Mirror) && map.isWalkable({ x, y: y + 1 })) {
         const px = x * TILE;
         const py = (y + 1) * TILE;
         const grad = g.createLinearGradient(px, py, px, py + TILE * 0.4);
@@ -108,15 +111,15 @@ export class TileArt {
     }
   }
 
-  /** 店の部屋: 赤い絨毯と金の縁取り */
-  private drawRug(g: CanvasRenderingContext2D, room: Room): void {
+  /** 店の部屋: 赤い絨毯と金の縁取り（闇市は紫） */
+  private drawRug(g: CanvasRenderingContext2D, room: Room, fill = 'rgba(120,20,30,0.55)', border = 'rgba(220,180,80,0.7)'): void {
     const x = room.x * TILE;
     const y = room.y * TILE;
     const w = room.w * TILE;
     const h = room.h * TILE;
-    g.fillStyle = 'rgba(120,20,30,0.55)';
+    g.fillStyle = fill;
     g.fillRect(x, y, w, h);
-    g.strokeStyle = 'rgba(220,180,80,0.7)';
+    g.strokeStyle = border;
     g.lineWidth = 2;
     g.strokeRect(x + 3, y + 3, w - 6, h - 6);
     g.fillStyle = 'rgba(0,0,0,0.12)';
