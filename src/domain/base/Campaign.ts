@@ -32,6 +32,7 @@ export class Campaign {
       codex: this.base.codex,
     });
     this.base.sorties++;
+    this.base.restock();
     this.current = session;
     return session;
   }

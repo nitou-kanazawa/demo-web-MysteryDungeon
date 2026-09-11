@@ -35,15 +35,27 @@ export class AppController {
     return this.campaign.base;
   }
 
-  /** 毎フレーム呼ぶ。演出の取り込みと、階移動・終了の遷移を起動する */
+  private lastTick = 0;
+
+  /** 毎フレーム呼ぶ。拠点の歩行、演出の取り込み、階移動・終了の遷移を起動する */
   tick(now: number): void {
-    if (this.scene.kind !== 'dungeon') return;
+    const dt = this.lastTick ? Math.min(50, now - this.lastTick) : 0;
+    this.lastTick = now;
+    if (this.scene.kind === 'base') {
+      if (!this.transition.blocksInput(now)) this.baseCtrl.tick(dt);
+      return;
+    }
     const game = this.scene.game;
     game.tick(now);
     const floor = game.consumeFloorChange();
     if (floor) this.transition.start(TRANSITIONS.floor(floor.title, floor.subtitle), now, this.canvas);
     const ended = game.consumeEnded();
     if (ended) this.transition.start(TRANSITIONS[ended](), now, this.canvas);
+  }
+
+  /** 押しっぱなしの追跡（拠点の歩行用） */
+  setHeld(code: string, down: boolean): void {
+    this.baseCtrl.setHeld(code, down);
   }
 
   handleKey(e: KeyboardEvent): boolean {

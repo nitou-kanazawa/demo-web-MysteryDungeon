@@ -36,14 +36,14 @@ export class SpriteArt {
    * ピクセルスプライトを中心 (cx, cy) に描く。scale はピクセル倍率。
    * squash: 縦のつぶれ（呼吸アニメ）
    */
-  drawSprite(g: CanvasRenderingContext2D, key: string, sprite: PixelSprite, cx: number, cy: number, scale: number, squash = 1): void {
+  drawSprite(g: CanvasRenderingContext2D, key: string, sprite: PixelSprite, cx: number, cy: number, scale: number, squash = 1, flipX = false): void {
     const img = this.cache.get(key, sprite, scale);
     const w = spriteWidth(sprite) * scale;
     const h = spriteHeight(sprite) * scale;
     g.save();
     g.imageSmoothingEnabled = false;
     g.translate(cx, cy + h / 2);
-    g.scale(1 / squash, squash);
+    g.scale((flipX ? -1 : 1) / squash, squash);
     g.drawImage(img, -w / 2, -h, w, h);
     g.restore();
   }
@@ -127,9 +127,10 @@ export class SpriteArt {
   }
 
   /** 拠点画面などで任意の位置・倍率で主人公を描く（x0, y0 は左上、scale はピクセル倍率） */
-  drawHeroAt(g: CanvasRenderingContext2D, x0: number, y0: number, t: number, scale: number): void {
-    const bob = Math.sin(t / 260) > 0 ? scale : 0;
-    this.drawSprite(g, 'hero', HERO_SPRITE, x0 + 16 * scale, y0 + 16 * scale + bob, scale);
+  drawHeroAt(g: CanvasRenderingContext2D, x0: number, y0: number, t: number, scale: number, flipX = false, walking = false): void {
+    const bob = walking ? (Math.sin(t / 90) > 0 ? scale * 2 : 0) : Math.sin(t / 260) > 0 ? scale : 0;
+    const squash = walking ? 1 + Math.sin(t / 90) * 0.04 : 1;
+    this.drawSprite(g, 'hero', HERO_SPRITE, x0 + 16 * scale, y0 + 16 * scale + bob, scale, squash, flipX);
   }
 
   /** 床上のアイテム（タイル左上指定） */

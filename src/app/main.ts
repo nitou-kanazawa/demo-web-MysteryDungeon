@@ -31,7 +31,10 @@ function main(): void {
   fit();
   window.addEventListener('resize', fit);
 
+  window.addEventListener('keyup', (e) => app.setHeld(e.code, false));
+  window.addEventListener('blur', () => app.baseCtrl.releaseAll());
   window.addEventListener('keydown', (e) => {
+    app.setHeld(e.code, true);
     if (e.code === 'KeyP' && app.scene.kind === 'dungeon') {
       const json = app.scene.game.exportReplay();
       void navigator.clipboard?.writeText(json);
@@ -53,12 +56,16 @@ function main(): void {
   if (!g) throw new Error('2d context unavailable');
   const loop = (t: number): void => {
     app.tick(t);
-    if (app.scene.kind === 'dungeon') {
-      if (app.scene.game.exitRequested) app.handleKey(new KeyboardEvent('keydown', { code: 'Space' }));
-      renderer.render(app.scene.game.session, app.scene.game.mode, t, app.scene.game.anim);
+    // 帰還要求は handleKey 経由で処理される（scene が拠点に切り替わるので再評価する）
+    if (app.scene.kind === 'dungeon' && app.scene.game.exitRequested) {
+      app.handleKey(new KeyboardEvent('keydown', { code: 'Space' }));
+    }
+    const scene = app.scene;
+    if (scene.kind === 'dungeon') {
+      renderer.render(scene.game.session, scene.game.mode, t, scene.game.anim);
     } else {
       baseRenderer.notice = app.baseCtrl.notice;
-      baseRenderer.render(g, app.base, app.baseCtrl.mode, renderer.width, renderer.height, t);
+      baseRenderer.render(g, app.base, app.baseCtrl, renderer.width, renderer.height, t);
     }
     app.transition.draw(g, renderer.width, renderer.height, t);
     requestAnimationFrame(loop);

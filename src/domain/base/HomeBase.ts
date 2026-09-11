@@ -8,6 +8,7 @@ import type { AllySnapshot } from '../entity/AllySnapshot';
 import { MONSTER_MAP } from '../data/monsters';
 import { resolveBreedChild } from '../data/breeding';
 import { FAMILY_LABEL } from '../entity/MonsterDef';
+import { BaseShop } from './BaseShop';
 
 /** 牧場の仲間記録（成長を書き戻すため level / exp は可変） */
 export interface AllyRecord {
@@ -33,6 +34,7 @@ export interface HomeBaseJson {
   readonly clears: number;
   readonly allies?: readonly AllyRecord[];
   readonly nextAllyId?: number;
+  readonly shopStock?: readonly string[];
 }
 
 export interface HomeBaseConfig {
@@ -62,6 +64,8 @@ export class HomeBase {
   readonly storage: ItemInstance[] = [];
   readonly allies: AllyRecord[] = [];
   private nextAllyId = 1;
+  /** 武器屋の品揃え（定義ID）。出撃ごとに入れ替わる */
+  shopStock: string[] = BaseShop.generateStock(0);
   gold = 0;
   readonly codex: Codex;
   sorties = 0;
@@ -93,6 +97,7 @@ export class HomeBase {
     for (const s of json.inventory) base.inventory.push(base.factory.restore(s));
     for (const s of json.storage) base.storage.push(base.factory.restore(s));
     for (const a of json.allies ?? []) base.allies.push({ ...a });
+    base.shopStock = json.shopStock ? [...json.shopStock] : BaseShop.generateStock(json.sorties);
     base.nextAllyId = json.nextAllyId ?? base.allies.length + 1;
     base.gold = json.gold;
     base.sorties = json.sorties;
@@ -112,7 +117,40 @@ export class HomeBase {
       clears: this.clears,
       allies: this.allies.map((a) => ({ ...a })),
       nextAllyId: this.nextAllyId,
+      shopStock: [...this.shopStock],
     };
+  }
+
+  // ---------------------------------------------------------------- 武器屋
+
+  /** 出撃回数をシードに品揃えを入れ替える */
+  restock(): void {
+    this.shopStock = BaseShop.generateStock(this.sorties);
+  }
+
+  buy(index: number): RanchResult<ItemInstance> {
+    const id = this.shopStock[index];
+    if (!id) return { ok: false, message: 'その商品はない。' };
+    const def = BaseShop.defOf(id);
+    const price = BaseShop.buyPrice(def);
+    if (this.gold < price) return { ok: false, message: `${def.name}は${price}G。ゴールドが足りない。` };
+    if (this.inventory.length >= this.config.inventoryCapacity) return { ok: false, message: '持ち物がいっぱいだ。' };
+    this.gold -= price;
+    const item = this.factory.create(id);
+    this.inventory.push(item);
+    this.shopStock.splice(index, 1);
+    this.codex.obtainItem(id);
+    return { ok: true, message: `${def.name}を${price}Gで買った。`, value: item };
+  }
+
+  sell(index: number): RanchResult {
+    const item = this.inventory[index];
+    if (!item) return { ok: false, message: 'そのアイテムはない。' };
+    if (item.def.category === 'pot' && item.contents.length > 0) return { ok: false, message: '中身の入った壺は売れない。' };
+    const price = BaseShop.sellPrice(item.def, item.plus);
+    this.inventory.splice(index, 1);
+    this.gold += price;
+    return { ok: true, message: `${item.displayName}を${price}Gで売った。`, value: undefined };
   }
 
   // ---------------------------------------------------------------- 牧場
