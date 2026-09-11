@@ -14,6 +14,7 @@ import { TileType } from '../map/Tile';
 import { Shopkeeper } from '../entity/Shopkeeper';
 import { Npc } from '../entity/Npc';
 import type { ShopService } from './ShopService';
+import { POPUP_COLORS, type VisualSink } from './VisualEvent';
 
 /**
  * 「移動」「攻撃」「ダメージ」「撃破処理」など、プレイヤーと AI が共有する
@@ -27,6 +28,7 @@ export class ActionExecutor {
     private readonly ids: IdGenerator,
     private readonly config: FloorConfig,
     private readonly shops: ShopService,
+    private readonly visuals: VisualSink,
     /** 番人撃破時のドロップなど、フロア生成器に頼む処理 */
     private onGuardianKilled: ((victim: Monster) => void) | undefined = undefined,
   ) {}
@@ -43,11 +45,13 @@ export class ActionExecutor {
   }
 
   /** dir へ 1 マス移動。地形・アクターに阻まれれば false */
-  move(actor: Actor, dir: Direction): boolean {
+  move(actor: Actor, dir: Direction, emit = true): boolean {
     if (!this.state.map.canStep(actor.pos, dir)) return false;
     const to = addVec(actor.pos, DIR_VEC[dir]);
     if (this.state.isOccupied(to)) return false;
+    const from = actor.pos;
     actor.pos = to;
+    if (emit) this.visuals.emit({ type: 'move', actorId: actor.id, from, to, fast: false });
     this.slide(actor, dir);
     this.onMoved?.(actor);
     return true;
@@ -56,6 +60,7 @@ export class ActionExecutor {
   /** 氷の上なら同じ方向へ止まるまで滑る。滑ったマス数を返す */
   slide(actor: Actor, dir: Direction): number {
     let n = 0;
+    const from = actor.pos;
     while (this.state.map.get(actor.pos) === TileType.Ice && n < 30) {
       if (!this.state.map.canStep(actor.pos, dir)) break;
       const next = addVec(actor.pos, DIR_VEC[dir]);
@@ -63,14 +68,19 @@ export class ActionExecutor {
       actor.pos = next;
       n++;
     }
-    if (n > 0) this.log.push(`${actor.name}は氷の上を滑った！`);
+    if (n > 0) {
+      this.log.push(`${actor.name}は氷の上を滑った！`);
+      this.visuals.emit({ type: 'move', actorId: actor.id, from, to: actor.pos, fast: true });
+    }
     return n;
   }
 
   /** 通常攻撃。命中判定 → ダメージ → 撃破処理 */
   attack(attacker: Actor, defender: Actor): void {
+    this.visuals.emit({ type: 'attack', actorId: attacker.id, from: attacker.pos, target: defender.pos });
     if (!this.rng.chance(HIT_CHANCE)) {
       this.log.push(`${attacker.name}の攻撃は外れた。`);
+      this.visuals.emit({ type: 'miss', pos: defender.pos });
       return;
     }
     const dmg = calcDamage(attacker.atk, defender.def, this.rng);
@@ -98,18 +108,23 @@ export class ActionExecutor {
     const dealt = target.takeDamage(amount);
     const who = source ? `${source.name}は` : '';
     this.log.push(`${who}${target.name}に${dealt}のダメージ！`);
+    this.visuals.emit({ type: 'damage', actorId: target.id, pos: target.pos, amount: dealt, faction: target.faction });
     if (!target.isAlive) this.onKilled(source, target);
   }
 
   /** dir 方向へ壁か他アクターにぶつかるまで押し出す。移動マス数を返す */
   knockback(target: Actor, dir: Direction, maxDistance = 10): number {
     let moved = 0;
-    while (moved < maxDistance && this.move(target, dir)) moved++;
+    const from = target.pos;
+    while (moved < maxDistance && this.move(target, dir, false)) moved++;
+    if (moved > 0) this.visuals.emit({ type: 'move', actorId: target.id, from, to: target.pos, fast: true });
     if (moved > 0 && target.faction !== 'player') this.dealDamage(undefined, target, 5);
     return moved;
   }
 
   private onKilled(killer: Actor | undefined, victim: Actor): void {
+    const defId = (victim as { definition?: { id: string } }).definition?.id;
+    this.visuals.emit({ type: 'death', pos: victim.pos, defId, faction: victim.faction });
     if (victim instanceof Player) {
       this.log.push(`${victim.name}は力尽きた…`);
       this.state.status = 'dead';
@@ -142,12 +157,16 @@ export class ActionExecutor {
     const exp = victim.definition.exp * (victim.guardian ? 2 : 1);
     if (killer instanceof Player) {
       const ups = killer.gainExp(exp);
-      if (ups > 0) this.log.push(`${killer.name}はレベル${killer.level}に上がった！`);
+      if (ups > 0) {
+        this.log.push(`${killer.name}はレベル${killer.level}に上がった！`);
+        this.visuals.emit({ type: 'popup', pos: killer.pos, text: `LEVEL UP! Lv${killer.level}`, color: POPUP_COLORS.warn });
+      }
     } else if (killer instanceof Ally) {
       const before = killer.level;
       const ups = killer.gainExp(exp);
       if (ups > 0) {
         this.log.push(`${killer.name}はレベル${killer.level}に上がった！`);
+        this.visuals.emit({ type: 'popup', pos: killer.pos, text: `Lv${killer.level}`, color: POPUP_COLORS.warn });
         for (let lv = before + 1; lv <= killer.level; lv++) {
           for (const s of killer.skillsLearnedAt(lv)) this.log.push(`${killer.name}は${s.name}を覚えた！`);
         }
@@ -166,5 +185,6 @@ export class ActionExecutor {
     this.state.allies.push(ally);
     this.log.push(`${ally.name}は起き上がり、仲間になりたそうにこちらを見ている…`);
     this.log.push(`${ally.name}が仲間になった！`);
+    this.visuals.emit({ type: 'popup', pos: ally.pos, text: '仲間になった！', color: POPUP_COLORS.good });
   }
 }

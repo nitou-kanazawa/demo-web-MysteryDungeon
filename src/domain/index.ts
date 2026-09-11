@@ -12,3 +12,4 @@ export type { Direction, Vec2 } from './core/Vec2';
 export { HomeBase } from './base/HomeBase';
 export { Campaign } from './base/Campaign';
 export { Codex } from './game/Codex';
+export type { VisualEvent } from './game/VisualEvent';

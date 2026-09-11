@@ -11,6 +11,7 @@ import type { MessageLog } from './MessageLog';
 import { findFreeTileNear } from './Placement';
 import { TRAP_KINDS, TRAP_LABEL, type TileFeature, type TrapKind } from './TileFeature';
 import type { FloorBuilder } from './FloorBuilder';
+import { POPUP_COLORS, type VisualSink } from './VisualEvent';
 
 export interface FeatureHooks {
   /** 落とし穴: プレイヤーを次の階へ */
@@ -32,6 +33,7 @@ export class FeatureService {
     private readonly ids: IdGenerator,
     private readonly floors: FloorBuilder,
     private readonly hooks: FeatureHooks,
+    private readonly visuals: VisualSink,
   ) {}
 
   /** アクターがマスに入ったとき */
@@ -119,6 +121,7 @@ export class FeatureService {
   private triggerTrap(f: Extract<TileFeature, { kind: 'trap' }>, victim: Actor, pos: Vec2): void {
     f.hidden = false;
     this.log.push(`${TRAP_LABEL[f.trap]}の罠だ！`);
+    this.visuals.emit({ type: 'popup', pos, text: `${TRAP_LABEL[f.trap]}の罠！`, color: POPUP_COLORS.trap });
     switch (f.trap) {
       case 'pitfall':
         if (victim instanceof Player) {
@@ -149,6 +152,7 @@ export class FeatureService {
       case 'sleepGas':
         victim.addStatus('sleep', 3);
         this.log.push(`${victim.name}は眠ってしまった。`);
+        this.visuals.emit({ type: 'popup', pos: victim.pos, text: '眠り', color: POPUP_COLORS.status });
         break;
       case 'warp':
         if (victim instanceof Player) {

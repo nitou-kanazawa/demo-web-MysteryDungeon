@@ -4,6 +4,7 @@ import { directionFromKey } from './input/KeyMap';
 import { handleCodexKey, newCodexView } from './ui/CodexView';
 import { TACTICS } from '../domain/game/Tactic';
 import { DashRunner } from '../domain/game/Dash';
+import { AnimationPlayer } from './render/Animation';
 import { buildItemActions } from './ui/ItemActionMenu';
 import type { UiMode } from './ui/UiState';
 
@@ -18,8 +19,10 @@ export class GameController {
 
   private readonly dash: DashRunner;
   private nextDashAt = 0;
-  /** ダッシュ 1 歩の間隔（ms） */
-  dashIntervalMs = 45;
+  /** ダッシュ 1 歩の間隔（ms）。移動アニメと同じ長さ */
+  dashIntervalMs = 110;
+  /** 演出の再生器 */
+  readonly anim = new AnimationPlayer();
 
   constructor(readonly session: GameSession) {
     this.dash = new DashRunner(session);
@@ -29,12 +32,20 @@ export class GameController {
     return this.dash.isRunning;
   }
 
-  /** 描画ループから毎フレーム呼ぶ。ダッシュ中なら間隔ごとに 1 歩進める。状態が変わったら true */
+  /** 描画ループから毎フレーム呼ぶ。演出イベントを取り込み、ダッシュ中なら間隔ごとに 1 歩進める */
   tick(now: number): boolean {
+    this.drainVisuals(now);
+    this.anim.prune(now);
     if (!this.dash.isRunning || now < this.nextDashAt) return false;
     this.nextDashAt = now + this.dashIntervalMs;
     this.dash.step();
+    this.drainVisuals(now);
     return true;
+  }
+
+  private drainVisuals(now: number): void {
+    const events = this.session.visuals.drain();
+    if (events.length > 0) this.anim.push(events, now);
   }
 
   exportReplay(): string {
@@ -58,6 +69,9 @@ export class GameController {
       this.dash.stop();
       return true;
     }
+    // 演出の再生中に次の入力が来たら、動きを省略して即応答する
+    const now = performance.now();
+    if (this.anim.isBusy(now)) this.anim.skip(now);
     switch (this.mode.kind) {
       case 'codex': {
         const r = handleCodexKey(e, this.mode.view);

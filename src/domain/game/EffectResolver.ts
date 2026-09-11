@@ -6,6 +6,7 @@ import { findFreeTileNear } from './Placement';
 import type { GameState } from './GameState';
 import type { MessageLog } from './MessageLog';
 import type { ActionExecutor } from './ActionExecutor';
+import { POPUP_COLORS, type VisualSink } from './VisualEvent';
 
 /** アイテム効果をゲーム状態に適用する */
 export interface EffectHooks {
@@ -21,6 +22,7 @@ export class EffectResolver {
     private readonly rng: IRng,
     private readonly log: MessageLog,
     private readonly actions: ActionExecutor,
+    private readonly visuals: VisualSink,
   ) {}
 
   setHooks(hooks: EffectHooks): void {
@@ -37,15 +39,20 @@ export class EffectResolver {
           p.maxHp += 1;
           p.hp = p.maxHp;
           this.log.push('HPは満タンだ。最大HPが1上がった。');
+          this.visuals.emit({ type: 'popup', pos: p.pos, text: '最大HP+1', color: POPUP_COLORS.good });
         } else {
           this.log.push(`HPが${healed}回復した。`);
+          this.visuals.emit({ type: 'heal', actorId: p.id, pos: p.pos, amount: healed });
         }
         return true;
       }
-      case 'fullHeal':
+      case 'fullHeal': {
+        const healed = p.maxHp - p.hp;
         p.hp = p.maxHp;
         this.log.push('HPが全回復した！');
+        this.visuals.emit({ type: 'heal', actorId: p.id, pos: p.pos, amount: healed });
         return true;
+      }
       case 'feed': {
         const before = p.hunger;
         p.hunger = Math.min(p.maxHunger, p.hunger + effect.nutrition);
@@ -73,6 +80,7 @@ export class EffectResolver {
         const tiles = [...this.state.map.walkableTiles()].filter((t) => !this.state.isOccupied(t));
         const dest = findFreeTileNear(this.state, this.rng.pick(tiles));
         if (dest) {
+          this.visuals.emit({ type: 'teleport', actorId: p.id, from: p.pos, to: dest });
           p.pos = dest;
           this.state.visibility.update(p.pos);
         }
@@ -84,6 +92,7 @@ export class EffectResolver {
         for (const m of this.state.monsters) {
           if (this.state.visibility.isVisible(m.pos)) {
             m.addStatus('confusion', effect.turns);
+            this.visuals.emit({ type: 'popup', pos: m.pos, text: '混乱', color: POPUP_COLORS.status });
             n++;
           }
         }
@@ -108,6 +117,8 @@ export class EffectResolver {
   /** 杖の魔法弾: from から dir へ直進し、最初に当たったアクターに効果を与える */
   applyBolt(effect: ItemEffect, from: Vec2, dir: Direction, maxRange = 10): void {
     const target = this.findBoltTarget(from, dir, maxRange);
+    const end = target ? target.pos : this.boltEnd(from, dir, maxRange);
+    this.visuals.emit({ type: 'projectile', from, to: end, kind: 'bolt', color: '#c084fc' });
     if (!target) {
       this.log.push('魔法弾は何にも当たらなかった。');
       return;
@@ -116,6 +127,7 @@ export class EffectResolver {
       case 'boltParalyze':
         target.addStatus('paralysis', effect.turns);
         this.log.push(`${target.name}は動けなくなった！`);
+        this.visuals.emit({ type: 'popup', pos: target.pos, text: 'かなしばり', color: POPUP_COLORS.status });
         break;
       case 'boltKnockback': {
         const moved = this.actions.knockback(target, dir);
@@ -133,6 +145,17 @@ export class EffectResolver {
       default:
         this.log.push('何も起こらなかった。');
     }
+  }
+
+  /** 何にも当たらなかったときの魔法弾の終点 */
+  private boltEnd(from: Vec2, dir: Direction, maxRange: number): Vec2 {
+    let p = from;
+    for (let i = 0; i < maxRange; i++) {
+      const next = addVec(p, DIR_VEC[dir]);
+      if (!this.state.map.passesProjectile(next)) break;
+      p = next;
+    }
+    return p;
   }
 
   private findBoltTarget(from: Vec2, dir: Direction, maxRange: number): Actor | undefined {

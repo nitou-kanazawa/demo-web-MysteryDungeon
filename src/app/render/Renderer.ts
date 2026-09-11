@@ -10,6 +10,11 @@ import { CodexRenderer } from './CodexRenderer';
 import { Ally } from '../../domain/entity/Ally';
 import { featureSprite } from './sprites/featureSprites';
 import { paintSprite } from './sprites/PixelSprite';
+import type { AnimationPlayer } from './Animation';
+import { MONSTER_MAP } from '../../domain/data/monsters';
+import { ITEM_MAP } from '../../domain/data/items';
+import { BLACKSMITH_DEF } from '../../domain/data/npcs';
+import { HERO_SPRITE } from './sprites/heroSprite';
 import { FONT } from './RenderConfig';
 
 /** 各レイヤーを合成して 1 フレームを描く */
@@ -37,7 +42,86 @@ export class Renderer {
     return this.canvas.height;
   }
 
-  render(session: GameSession, mode: UiMode, t: number): void {
+  /** ダメージ数字・ポップアップ・投げ物・魔法弾・ブレス・撃破の演出 */
+  private drawOverlays(g: CanvasRenderingContext2D, anim: AnimationPlayer, ox: number, oy: number, t: number): void {
+    for (const o of anim.overlays(t)) {
+      g.save();
+      switch (o.kind) {
+        case 'text': {
+          g.globalAlpha = Math.max(0, o.alpha);
+          g.font = `bold ${o.size}px ${FONT}`;
+          g.textAlign = 'center';
+          g.textBaseline = 'bottom';
+          g.lineWidth = 3;
+          g.strokeStyle = 'rgba(0,0,0,0.85)';
+          g.strokeText(o.text, ox + o.x, oy + o.y);
+          g.fillStyle = o.color;
+          g.fillText(o.text, ox + o.x, oy + o.y);
+          break;
+        }
+        case 'death': {
+          g.globalAlpha = Math.max(0, o.alpha);
+          const def = o.defId ? (MONSTER_MAP.get(o.defId) ?? (o.defId === 'blacksmith' ? BLACKSMITH_DEF : undefined)) : undefined;
+          if (def) this.sprites.drawCreature(g, def, ox + o.x, oy + o.y, t, o.scale);
+          else if (o.faction === 'player') this.sprites.drawSprite(g, 'hero', HERO_SPRITE, ox + o.x, oy + o.y, (TILE / 32) * o.scale);
+          // 白い閃光
+          g.globalAlpha = Math.max(0, o.alpha) * 0.6;
+          g.fillStyle = '#ffffff';
+          g.beginPath();
+          g.arc(ox + o.x, oy + o.y, TILE * 0.5 * o.scale, 0, Math.PI * 2);
+          g.fill();
+          break;
+        }
+        case 'item': {
+          const def = ITEM_MAP.get(o.itemDefId);
+          if (def) this.sprites.drawItemDef(g, def, ox + o.x, oy + o.y, TILE / 32);
+          break;
+        }
+        case 'bolt': {
+          o.trail.forEach((p, i) => {
+            g.globalAlpha = 0.35 - i * 0.1;
+            g.fillStyle = o.color;
+            g.beginPath();
+            g.arc(ox + p.x, oy + p.y, 6 - i, 0, Math.PI * 2);
+            g.fill();
+          });
+          g.globalAlpha = 1;
+          const grad = g.createRadialGradient(ox + o.x, oy + o.y, 1, ox + o.x, oy + o.y, 10);
+          grad.addColorStop(0, '#ffffff');
+          grad.addColorStop(0.5, o.color);
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          g.fillStyle = grad;
+          g.beginPath();
+          g.arc(ox + o.x, oy + o.y, 10, 0, Math.PI * 2);
+          g.fill();
+          break;
+        }
+        case 'breath': {
+          const n = Math.max(1, Math.max(Math.abs(o.to.x - o.from.x), Math.abs(o.to.y - o.from.y)));
+          const reach = Math.min(n, o.progress * (n + 1));
+          for (let i = 1; i <= reach; i++) {
+            const k = i / n;
+            const cx = ox + (o.from.x + (o.to.x - o.from.x) * k + 0.5) * TILE;
+            const cy = oy + (o.from.y + (o.to.y - o.from.y) * k + 0.5) * TILE;
+            const r = TILE * (0.3 + 0.15 * Math.sin(t / 40 + i));
+            g.globalAlpha = 0.85 * (1 - o.progress * 0.6);
+            const grad = g.createRadialGradient(cx, cy, 2, cx, cy, r);
+            grad.addColorStop(0, '#fde68a');
+            grad.addColorStop(0.5, o.color);
+            grad.addColorStop(1, 'rgba(220,38,38,0)');
+            g.fillStyle = grad;
+            g.beginPath();
+            g.arc(cx, cy, r, 0, Math.PI * 2);
+            g.fill();
+          }
+          break;
+        }
+      }
+      g.restore();
+    }
+  }
+
+  render(session: GameSession, mode: UiMode, t: number, anim?: AnimationPlayer): void {
     const g = this.g;
     const state = session.state;
     const ox = 0;
@@ -72,10 +156,16 @@ export class Renderer {
       if (!a.isAlive) continue;
       if (a.faction !== 'player' && !state.visibility.isVisible(a.pos)) continue;
       const highlight = a instanceof Ally && a.joinedTurn >= 0 && state.turn - a.joinedTurn < 4;
-      this.sprites.drawActor(g, a, ox + a.pos.x * TILE, oy + a.pos.y * TILE, t, highlight);
+      const v = anim ? anim.actorVisual(a.id, t) : { dx: 0, dy: 0, alpha: 1 };
+      if (v.alpha <= 0) continue;
+      g.save();
+      g.globalAlpha = v.alpha;
+      this.sprites.drawActor(g, a, ox + a.pos.x * TILE + v.dx, oy + a.pos.y * TILE + v.dy, t, highlight);
+      g.restore();
     }
 
     this.lighting.apply(g, state, ox, oy, t);
+    if (anim) this.drawOverlays(g, anim, ox, oy, t);
 
     // 店の値札（視界内のみ）
     g.font = `bold 10px ${FONT}`;

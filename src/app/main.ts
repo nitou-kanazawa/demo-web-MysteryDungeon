@@ -54,7 +54,7 @@ function main(): void {
     if (app.scene.kind === 'dungeon') {
       app.scene.game.tick(t);
       if (app.scene.game.exitRequested) app.handleKey(new KeyboardEvent('keydown', { code: 'Space' }));
-      renderer.render(app.scene.game.session, app.scene.game.mode, t);
+      renderer.render(app.scene.game.session, app.scene.game.mode, t, app.scene.game.anim);
     } else {
       baseRenderer.notice = app.baseCtrl.notice;
       baseRenderer.render(g, app.base, app.baseCtrl.mode, renderer.width, renderer.height, t);

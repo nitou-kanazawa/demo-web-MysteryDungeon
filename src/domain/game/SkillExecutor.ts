@@ -7,6 +7,7 @@ import type { ActionExecutor } from './ActionExecutor';
 import { calcDamage } from './Combat';
 import type { GameState } from './GameState';
 import type { MessageLog } from './MessageLog';
+import { POPUP_COLORS, type VisualSink } from './VisualEvent';
 
 /** 敵対関係。中立（店主）はどちらとも敵対しない */
 export function isHostile(a: Actor, b: Actor): boolean {
@@ -21,6 +22,7 @@ export class SkillExecutor {
     private readonly rng: IRng,
     private readonly log: MessageLog,
     private readonly actions: ActionExecutor,
+    private readonly visuals: VisualSink,
     /** 炎で氷が溶けたときに呼ばれる（再凍結の予約用） */
     private readonly onIceMelted: ((p: Vec2) => void) | undefined = undefined,
   ) {}
@@ -28,10 +30,12 @@ export class SkillExecutor {
   use(user: Actor, skill: SkillDef, target: Actor): void {
     user.setCooldown(skill.id, skill.cooldown);
     this.log.push(`${user.name}の${skill.name}！`);
+    this.visuals.emit({ type: 'popup', pos: user.pos, text: skill.name, color: POPUP_COLORS.skill });
     switch (skill.kind) {
       case 'heal': {
         const healed = target.heal(skill.power);
         this.log.push(`${target.name}のHPが${healed}回復した。`);
+        this.visuals.emit({ type: 'heal', actorId: target.id, pos: target.pos, amount: healed });
         break;
       }
       case 'breath': {
@@ -57,18 +61,24 @@ export class SkillExecutor {
         }
         if (hit === 0) this.log.push('炎は誰にも当たらなかった。');
         if (melted > 0) this.log.push('炎で氷が溶けて水になった！');
+        this.visuals.emit({ type: 'projectile', from: user.pos, to: p, kind: 'breath', color: '#f97316' });
         break;
       }
       case 'drain': {
         const dmg = Math.floor((calcDamage(user.atk, target.def, this.rng) * skill.power) / 100);
         const before = target.hp;
+        this.visuals.emit({ type: 'attack', actorId: user.id, from: user.pos, target: target.pos });
         this.actions.dealDamage(user, target, dmg);
         const healed = user.heal(Math.floor((before - Math.max(0, target.hp)) / 2));
-        if (healed > 0) this.log.push(`${user.name}はHPを${healed}吸い取った。`);
+        if (healed > 0) {
+          this.log.push(`${user.name}はHPを${healed}吸い取った。`);
+          this.visuals.emit({ type: 'heal', actorId: user.id, pos: user.pos, amount: healed });
+        }
         break;
       }
       case 'smash': {
         const dmg = Math.floor((calcDamage(user.atk, target.def, this.rng) * skill.power) / 100);
+        this.visuals.emit({ type: 'attack', actorId: user.id, from: user.pos, target: target.pos });
         this.actions.dealDamage(user, target, dmg);
         break;
       }

@@ -38,6 +38,7 @@ import { Shopkeeper } from '../entity/Shopkeeper';
 import { Npc } from '../entity/Npc';
 import { chebyshev } from '../core/Vec2';
 import { CollapseEvent, RefreezeEvent } from './FloorEvent';
+import { VisualSink } from './VisualEvent';
 import type { ItemSnapshot } from '../item/ItemSnapshot';
 
 export interface SessionOptions {
@@ -68,6 +69,8 @@ export class GameSession {
   readonly shops: ShopService;
   readonly features: FeatureService;
   readonly smith: SmithService;
+  /** 演出イベント（画面側が drain して再生する） */
+  readonly visuals = new VisualSink();
   readonly history: Command[] = [];
   private readonly startingInventory: readonly ItemSnapshot[];
   private readonly startingGold: number;
@@ -114,18 +117,27 @@ export class GameSession {
       this.state.allies.push(new Ally(this.ids.generate(), def, player.pos, snap));
     }
 
-    this.actions = new ActionExecutor(this.state, this.rng, this.log, this.ids, this.config, this.shops);
-    this.effects = new EffectResolver(this.state, this.rng, this.log, this.actions);
-    this.skills = new SkillExecutor(this.state, this.rng, this.log, this.actions, (p) => {
+    this.actions = new ActionExecutor(this.state, this.rng, this.log, this.ids, this.config, this.shops, this.visuals);
+    this.effects = new EffectResolver(this.state, this.rng, this.log, this.actions, this.visuals);
+    this.skills = new SkillExecutor(this.state, this.rng, this.log, this.actions, this.visuals, (p) => {
       for (const e of this.state.events) if (e instanceof RefreezeEvent) e.markMelted(this.state, p);
     });
     this.smith = new SmithService(this.log);
-    this.features = new FeatureService(this.state, this.rng, this.log, this.actions, this.ids, this.floors, {
-      fallToNextFloor: () => this.fallToNextFloor(),
-      teleportPlayer: () => {
-        this.effects.applySelf({ kind: 'teleport' });
+    this.features = new FeatureService(
+      this.state,
+      this.rng,
+      this.log,
+      this.actions,
+      this.ids,
+      this.floors,
+      {
+        fallToNextFloor: () => this.fallToNextFloor(),
+        teleportPlayer: () => {
+          this.effects.applySelf({ kind: 'teleport' });
+        },
       },
-    });
+      this.visuals,
+    );
     this.effects.setHooks({
       revealTraps: () => this.features.revealAllTraps(),
       plantTrapOn: (target) => this.features.plantAndTrigger(target),
@@ -260,6 +272,7 @@ export class GameSession {
       if (!this.features.pushBoulder(p.pos, dir)) return { consumedTurn: false };
       const from = p.pos;
       p.pos = to;
+      this.visuals.emit({ type: 'move', actorId: p.id, from, to, fast: false });
       this.afterPlayerMoved(from);
       return { consumedTurn: true };
     }
@@ -284,11 +297,14 @@ export class GameSession {
       const from = p.pos;
       other.pos = p.pos;
       p.pos = to;
+      this.visuals.emit({ type: 'move', actorId: p.id, from, to, fast: false });
+      this.visuals.emit({ type: 'move', actorId: other.id, from: to, to: from, fast: false });
       this.afterPlayerMoved(from);
       return { consumedTurn: true };
     }
     const from = p.pos;
     p.pos = to;
+    this.visuals.emit({ type: 'move', actorId: p.id, from, to, fast: false });
     this.actions.slide(p, dir);
     this.afterPlayerMoved(from);
     return { consumedTurn: true };
@@ -328,6 +344,7 @@ export class GameSession {
     const prevTheme = this.state.theme.id;
     this.state.floor++;
     this.floors.build(this.state, this.rng);
+    this.visuals.emit({ type: 'floor' });
     this.log.push(`${this.state.floor}F に落ちた！`);
     if (this.state.theme.id !== prevTheme) this.log.push(`ここは「${this.state.theme.name}」。${this.state.theme.description}`);
   }
@@ -386,6 +403,7 @@ export class GameSession {
     const prevTheme = this.state.theme.id;
     this.state.floor++;
     this.floors.build(this.state, this.rng);
+    this.visuals.emit({ type: 'floor' });
     this.log.push(`${this.state.floor}F に降りた。`);
     if (this.state.theme.id !== prevTheme) this.log.push(`ここは「${this.state.theme.name}」。${this.state.theme.description}`);
     return { consumedTurn: false };
@@ -489,6 +507,7 @@ export class GameSession {
       if (hit) break;
       last = next;
     }
+    this.visuals.emit({ type: 'projectile', from: p.pos, to: hit ? hit.pos : last, kind: 'item', itemDefId: item.def.id });
     if (hit) {
       const dmg = item.def.throwDamage ?? (item.def.atk ? item.def.atk + item.plus : 2);
       this.actions.dealDamage(p, hit, dmg);
