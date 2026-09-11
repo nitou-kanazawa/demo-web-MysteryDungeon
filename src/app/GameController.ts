@@ -7,6 +7,7 @@ import { DashRunner } from '../domain/game/Dash';
 import { AnimationPlayer } from './render/Animation';
 import { buildItemActions } from './ui/ItemActionMenu';
 import type { UiMode } from './ui/UiState';
+import type { VisualEvent } from '../domain/game/VisualEvent';
 
 /**
  * キー入力を UI 状態機械に通し、ゲームセッションへのコマンドに変換する。
@@ -30,6 +31,9 @@ export class GameController {
   /** ゲームが終了した直後（画面遷移の起動用）。読むとクリアされる */
   private endedStatus: 'dead' | 'won' | 'escaped' | undefined;
 
+  /** 演出イベントを横取りしたい側（効果音など）が登録する */
+  onVisuals: ((events: readonly VisualEvent[]) => void) | undefined;
+
   constructor(readonly session: GameSession) {
     this.dash = new DashRunner(session);
   }
@@ -51,7 +55,10 @@ export class GameController {
 
   private drainVisuals(now: number): void {
     const events = this.session.visuals.drain();
-    if (events.length > 0) this.anim.push(events, now);
+    if (events.length > 0) {
+      this.anim.push(events, now);
+      this.onVisuals?.(events);
+    }
     if (events.some((e) => e.type === 'floor')) this.floorChanged = true;
     const status = this.session.state.status;
     if (status !== this.lastStatus) {

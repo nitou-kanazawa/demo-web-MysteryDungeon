@@ -18,7 +18,7 @@ export type BaseMode =
 
 export const HOUSE_MENU = ['倉庫', '設定', '出る'] as const;
 export const RANCH_ACTIONS = ['連れて行く／留守番', '逃がす', '戻る'] as const;
-export const SETTINGS_ITEMS = ['敵の見た目'] as const;
+export const SETTINGS_ITEMS = ['敵の見た目', '効果音', 'BGM'] as const;
 export const DUNGEON_CONFIRM = ['出撃する', 'やめる'] as const;
 
 export interface HeroState {
@@ -229,6 +229,8 @@ export class BaseController {
     if (this.moveCursor(mode, e, SETTINGS_ITEMS.length)) return true;
     if (this.isConfirm(e) || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
       if (mode.cursor === 0) renderSettings.cycleSkin();
+      if (mode.cursor === 1) renderSettings.toggleSfx();
+      if (mode.cursor === 2) renderSettings.toggleBgm();
       return true;
     }
     return false;

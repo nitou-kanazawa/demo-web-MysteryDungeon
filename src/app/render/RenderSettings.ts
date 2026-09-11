@@ -10,11 +10,19 @@ export const SKIN_LABEL: Readonly<Record<SpriteSkin, string>> = {
 
 interface SettingsJson {
   skin?: SpriteSkin;
+  sfx?: boolean;
+  bgm?: boolean;
 }
 
-/** 描画に関する設定（localStorage に保存） */
+/** 描画・音に関する設定（localStorage に保存） */
 export class RenderSettings {
   skin: SpriteSkin = 'classic';
+  /** 効果音 */
+  sfx = true;
+  /** BGM */
+  bgm = true;
+  /** 設定が変わったときに通知する（音の ON/OFF 反映用） */
+  onChange: (() => void) | undefined;
 
   constructor(private readonly key = 'mysterydungeon.settings.v1') {}
 
@@ -23,6 +31,8 @@ export class RenderSettings {
       const raw = localStorage.getItem(this.key);
       const json = raw ? (JSON.parse(raw) as SettingsJson) : {};
       if (json.skin && SPRITE_SKINS.includes(json.skin)) this.skin = json.skin;
+      if (typeof json.sfx === 'boolean') this.sfx = json.sfx;
+      if (typeof json.bgm === 'boolean') this.bgm = json.bgm;
     } catch {
       /* ignore */
     }
@@ -31,10 +41,23 @@ export class RenderSettings {
 
   save(): void {
     try {
-      localStorage.setItem(this.key, JSON.stringify({ skin: this.skin } satisfies SettingsJson));
+      localStorage.setItem(this.key, JSON.stringify({ skin: this.skin, sfx: this.sfx, bgm: this.bgm } satisfies SettingsJson));
     } catch {
       /* ignore */
     }
+    this.onChange?.();
+  }
+
+  toggleSfx(): boolean {
+    this.sfx = !this.sfx;
+    this.save();
+    return this.sfx;
+  }
+
+  toggleBgm(): boolean {
+    this.bgm = !this.bgm;
+    this.save();
+    return this.bgm;
   }
 
   cycleSkin(): SpriteSkin {

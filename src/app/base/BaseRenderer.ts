@@ -194,11 +194,12 @@ export class BaseRenderer {
         for (let px = x; px < x + w - 130; px += 28) g.fillRect(px, groundY - 44, 6, 44);
         g.fillRect(x, groundY - 38, w - 130, 5);
         g.fillRect(x, groundY - 20, w - 130, 5);
-        // 留守番の仲間が草を食む
+        // 留守番の仲間は納屋の前（入口の右側）に並ぶ。入口に立つ主人公の隊列と重ならない
         const idle = base.allies.filter((a) => !a.inParty).slice(0, 4);
         idle.forEach((a, i) => {
           const def = MONSTER_MAP.get(a.defId);
-          if (def) this.sprites.drawCreature(g, def, x + 30 + i * 46, groundY - 26, t + i * 400, 1.2);
+          const bob = Math.sin(t / 500 + i) * 2;
+          if (def) this.sprites.drawCreature(g, def, x + w - 90 + i * 40, groundY - 26 + bob, t + i * 400, 1.1);
         });
         break;
       }
@@ -395,7 +396,7 @@ export class BaseRenderer {
     g.textAlign = 'right';
     g.textBaseline = 'top';
     g.fillText('Enter / ← → 切替  Esc 戻る', x + w - 16, y + 14);
-    const values = [SKIN_LABEL[renderSettings.skin]];
+    const values = [SKIN_LABEL[renderSettings.skin], renderSettings.sfx ? 'ON' : 'OFF', renderSettings.bgm ? 'ON' : 'OFF'];
     SETTINGS_ITEMS.forEach((label, i) => {
       const ly = y + 48 + i * 30;
       const sel = i === cursor;

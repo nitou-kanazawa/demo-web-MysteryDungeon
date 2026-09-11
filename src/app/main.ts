@@ -2,6 +2,7 @@ import { DEFAULT_GENERATOR_CONFIG } from '../domain/map/DungeonGenerator';
 import { AppController } from './AppController';
 import { BaseRenderer } from './base/BaseRenderer';
 import { LocalStorageBaseStorage } from './base/BaseStorage';
+import { SoundDirector } from './audio/SoundDirector';
 import { Renderer } from './render/Renderer';
 import { renderSettings } from './render/RenderSettings';
 
@@ -19,6 +20,32 @@ function main(): void {
   const skinParam = new URLSearchParams(location.search).get('skin');
   if (skinParam === 'girl' || skinParam === 'classic') renderSettings.skin = skinParam;
   const app = new AppController(new LocalStorageBaseStorage(), () => fixedSeed ?? Date.now() >>> 0);
+  const sound = new SoundDirector();
+  app.setSound(sound);
+  const applySoundSettings = (): void => {
+    sound.setSfxEnabled(renderSettings.sfx);
+    sound.setBgmEnabled(renderSettings.bgm);
+  };
+  renderSettings.onChange = applySoundSettings;
+  applySoundSettings();
+  /** 現在の場面に合う BGM に切り替える */
+  const updateBgm = (): void => {
+    if (!sound.engine.ready) return;
+    sound.playScene(app.scene.kind === 'base' ? 'village' : app.scene.game.session.state.theme.id);
+  };
+  /** メニューの開閉・カーソル移動を効果音にする */
+  const uiSoundFor = (beforeKind: string, afterKind: string, code: string, handled: boolean): void => {
+    if (!handled) return;
+    if (beforeKind !== afterKind) {
+      const toNeutral = afterKind === 'explore' || afterKind === 'walk';
+      sound.onUi(toNeutral ? 'close' : beforeKind === 'walk' ? 'door' : 'open');
+      return;
+    }
+    if (afterKind === 'explore' || afterKind === 'walk' || afterKind === 'result') return;
+    if (code === 'ArrowUp' || code === 'ArrowDown' || code === 'ArrowLeft' || code === 'ArrowRight' || code === 'KeyW' || code === 'KeyS') sound.onUi('cursor');
+    else if (code === 'Enter' || code === 'Space' || code === 'KeyX') sound.onUi('confirm');
+  };
+  const currentModeKind = (): string => (app.scene.kind === 'base' ? app.baseCtrl.mode.kind : app.scene.game.mode.kind);
   const renderer = new Renderer(canvas, DEFAULT_GENERATOR_CONFIG.width, DEFAULT_GENERATOR_CONFIG.height);
   const baseRenderer = new BaseRenderer();
   app.canvas = canvas;
@@ -34,6 +61,7 @@ function main(): void {
   window.addEventListener('keyup', (e) => app.setHeld(e.code, false));
   window.addEventListener('blur', () => app.baseCtrl.releaseAll());
   window.addEventListener('keydown', (e) => {
+    sound.unlock();
     app.setHeld(e.code, true);
     if (e.code === 'KeyP' && app.scene.kind === 'dungeon') {
       const json = app.scene.game.exportReplay();
@@ -49,13 +77,17 @@ function main(): void {
       e.preventDefault();
       return;
     }
-    if (app.handleKey(e)) e.preventDefault();
+    const before = currentModeKind();
+    const handled = app.handleKey(e);
+    uiSoundFor(before, currentModeKind(), e.code, handled);
+    if (handled) e.preventDefault();
   });
 
   const g = canvas.getContext('2d');
   if (!g) throw new Error('2d context unavailable');
   const loop = (t: number): void => {
     app.tick(t);
+    updateBgm();
     // 帰還要求は handleKey 経由で処理される（scene が拠点に切り替わるので再評価する）
     if (app.scene.kind === 'dungeon' && app.scene.game.exitRequested) {
       app.handleKey(new KeyboardEvent('keydown', { code: 'Space' }));
