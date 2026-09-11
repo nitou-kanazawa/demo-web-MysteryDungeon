@@ -20,8 +20,8 @@ export const DEFAULT_PLAYER_CONFIG: PlayerConfig = {
   def: 1,
   maxHunger: 100,
   inventoryCapacity: 20,
-  torch: 300,
-  maxTorch: 400,
+  torch: 500,
+  maxTorch: 600,
 };
 
 export class Player extends Actor {

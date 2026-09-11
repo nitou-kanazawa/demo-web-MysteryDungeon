@@ -44,14 +44,15 @@ export class Lighting {
       }
     }
     og.clip();
-    og.fillStyle = `rgba(0,0,0,${profile.visible})`;
+    // 松明が消えていると視界内のベース明るさも落ちる（見えてはいるが暗い）
+    og.fillStyle = `rgba(0,0,0,${player.torch <= 0 ? profile.visible * 0.55 : profile.visible})`;
     og.fillRect(0, 0, w, h);
 
     const flicker = 1 + Math.sin(t / 90) * 0.035 + Math.sin(t / 37) * 0.02;
     const cx = (player.pos.x + 0.5) * TILE;
     const cy = (player.pos.y + 0.5) * TILE;
-    // 松明の燃料が減ると光が小さくなる（0 でも最低限の明かりは残す）
-    const fuel = Math.max(0.35, Math.min(1, player.torch / 300));
+    // 松明の燃料が残り 100 を切ると光が小さくなる（0 でも最低限の明かりは残す）
+    const fuel = player.torch >= 100 ? 1 : Math.max(0.4, player.torch / 100);
     const radius = TILE * profile.torchRadius * flicker * fuel;
     const torch = og.createRadialGradient(cx, cy, TILE * 0.5, cx, cy, radius);
     torch.addColorStop(0, 'rgba(0,0,0,1)');

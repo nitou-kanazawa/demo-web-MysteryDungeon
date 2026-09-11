@@ -645,11 +645,11 @@ export class GameSession {
       }
     }
 
-    // 松明の燃料
-    if (p.torch > 0) {
+    // 松明の燃料（2 ターンで 1 減る）。切れても視界は狭まらず、描画が暗くなるだけ
+    if (p.torch > 0 && s.turn % 2 === 0) {
       p.torch--;
-      if (p.torch === 60) this.log.push('松明の火が小さくなってきた…');
-      if (p.torch === 0) this.log.push('松明が消えた！ 暗闇だ…');
+      if (p.torch === 100) this.log.push('松明の火が小さくなってきた…');
+      if (p.torch === 0) this.log.push('松明が消えた！ 辺りが暗い… たいまつがあれば火を灯せる。');
     }
     s.visibility.sightRadius = effectiveSightRadius(s);
 

@@ -33,7 +33,7 @@ export const ITEM_SPAWN_TABLE: readonly ItemSpawnEntry[] = [
   { defId: 'iron_lump', weight: 5, minFloor: 2, maxFloor: 10 },
   { defId: 'holy_water', weight: 5, minFloor: 1, maxFloor: 10 },
   { defId: 'monster_fang', weight: 3, minFloor: 5, maxFloor: 10 },
-  { defId: 'torch', weight: 5, minFloor: 1, maxFloor: 10 },
+  { defId: 'torch', weight: 9, minFloor: 1, maxFloor: 10 },
   { defId: 'gold', weight: 10, minFloor: 1, maxFloor: 10 },
 ];
 

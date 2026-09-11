@@ -53,7 +53,9 @@ export class HudRenderer {
     g.fillText(`攻 ${p.atk}  守 ${p.def}`, 470, y);
     g.fillStyle = '#fbbf24';
     g.fillText(`${p.gold} G`, 590, y);
-    const torchColor = p.torch === 0 ? '#f85149' : p.torch <= 60 ? '#d29922' : '#fb923c';
+    // 残り 100 で黄色、50 以下は赤く点滅
+    const blink = Math.floor(performance.now() / 350) % 2 === 0;
+    const torchColor = p.torch <= 50 ? (blink ? '#f85149' : '#7f1d1d') : p.torch <= 100 ? '#d29922' : '#fb923c';
     g.fillStyle = torchColor;
     g.font = `bold 13px ${FONT}`;
     g.fillText(`松明 ${p.torch}`, 680, y - 7);

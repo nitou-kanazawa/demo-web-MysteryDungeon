@@ -285,19 +285,34 @@ describe('霧と松明', () => {
     }
   });
 
-  it('松明は毎ターン減り、0 で視界が 1 マスになる。たいまつで回復する', () => {
+  it('松明は 2 ターンで 1 減り、切れても部屋は見える。たいまつで回復する', () => {
     const s = new GameSession(991, { floorConfig: PLAIN, startingItems: ['torch'] });
     const st = s.state;
     st.monsters = [];
     st.player.torch = 1;
     s.execute({ type: 'wait' });
+    s.execute({ type: 'wait' });
     expect(st.player.torch).toBe(0);
-    expect(st.visibility.sightRadius).toBe(1);
+    // 松明切れは視界を狭めない（描画が暗くなるだけ）
+    expect(st.visibility.sightRadius).toBeUndefined();
+    const room = st.map.roomAt(st.player.pos)!;
+    for (const t of room.tiles()) expect(st.visibility.isVisible(t)).toBe(true);
     expect(s.log.all.some((m) => m.includes('松明が消えた'))).toBe(true);
     s.execute({ type: 'use', index: 0 });
-    expect(st.player.torch).toBeGreaterThanOrEqual(199);
-    expect(st.visibility.sightRadius).toBeUndefined();
+    expect(st.player.torch).toBeGreaterThanOrEqual(249);
     expect(s.log.all.some((m) => m.includes('火が灯った'))).toBe(true);
+  });
+
+  it('松明は 10F 踏破まで補給なしでも持つ（500 燃料 = 1000 ターン）', () => {
+    const s = new GameSession(992, { floorConfig: PLAIN });
+    s.state.player.maxHp = 9999;
+    s.state.player.hp = 9999;
+    for (let i = 0; i < 300; i++) {
+      s.state.monsters = [];
+      s.execute({ type: 'wait' });
+    }
+    expect(s.state.status).toBe('playing');
+    expect(s.state.player.torch).toBe(500 - 150);
   });
 });
 
