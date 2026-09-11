@@ -258,7 +258,7 @@ describe('牧場と配合', () => {
     expect(b.allies.length).toBe(1);
     expect(b.codex.monsters.has('king_slime')).toBe(true);
 
-    b.addAlly(snap('hammerhood', 2));
+    b.addAlly(snap('ghost', 2)); // スライム系×ゾンビ系は系統レシピ無し → ランクの高い方
     const r2 = b.breed(0, 1);
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;

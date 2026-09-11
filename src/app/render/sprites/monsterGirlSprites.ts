@@ -150,4 +150,13 @@ export const MONSTER_GIRL_SPRITES: Readonly<Record<string, PixelSprite>> = {
   dragon: girl({ hair: '#ef4444', hairShade: '#b91c1c', dress: '#7f1d1d', dressShade: '#450a0a', accent: '#fde68a', behind: (c) => { batWings(c); tail(c); }, front: horns }),
   metal_dragon: girl({ hair: '#cbd5e1', hairShade: '#94a3b8', dress: '#475569', dressShade: '#1e293b', accent: '#e2e8f0', eye: '#f87171', behind: (c) => { batWings(c); tail(c); }, front: horns }),
   gargoyle: girl({ hair: '#64748b', hairShade: '#475569', dress: '#1f2937', dressShade: '#111827', accent: '#8b9bb4', eye: '#f87171', behind: stoneWings, front: horns }),
+  // 系統配合で生まれる種族
+  drago_slime: girl({ hair: '#4ade80', hairShade: '#16a34a', dress: '#bbf7d0', dressShade: '#86efac', accent: '#22c55e', behind: batWings, front: (c) => { gelHat(c); horns(c); } }),
+  slime_knight: girl({ hair: '#60a5fa', hairShade: '#2563eb', dress: '#94a3b8', dressShade: '#64748b', accent: '#ef4444', front: (c) => { gelHat(c); pauldrons(c); c.rect(27, 12, 2, 15, 'S'); } }),
+  wyvern: girl({ hair: '#fb923c', hairShade: '#c2410c', dress: '#7c2d12', dressShade: '#431407', accent: '#fde68a', behind: (c) => { featherWings(c); tail(c); }, front: horns }),
+  hawkman: girl({ hair: '#a16207', hairShade: '#713f12', dress: '#78350f', dressShade: '#451a03', accent: '#f59e0b', behind: featherWings, front: pointyEars }),
+  stoneman: girl({ hair: '#a8a29e', hairShade: '#78716c', dress: '#57534e', dressShade: '#292524', accent: '#78716c', eye: '#facc15', front: pauldrons }),
+  shadow: girl({ hair: '#4c1d95', hairShade: '#2e1065', dress: '#1e1b4b', dressShade: '#0f0a2e', accent: '#7c3aed', skin: '#e9d5ff', eye: '#f87171', floating: true, front: ghostHem }),
+  killer_panther: girl({ hair: '#facc15', hairShade: '#ca8a04', dress: '#713f12', dressShade: '#451a03', accent: '#a16207', front: (c) => { roundEars(c); tail(c); } }),
+  dragon_kids: girl({ hair: '#84cc16', hairShade: '#4d7c0f', dress: '#fef9c3', dressShade: '#fde68a', accent: '#65a30d', behind: (c) => { batWings(c); tail(c); }, front: horns }),
 };

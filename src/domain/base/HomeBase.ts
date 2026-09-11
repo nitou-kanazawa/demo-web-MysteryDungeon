@@ -6,7 +6,8 @@ import type { ItemSnapshot } from '../item/ItemSnapshot';
 import { Codex } from '../game/Codex';
 import type { AllySnapshot } from '../entity/AllySnapshot';
 import { MONSTER_MAP } from '../data/monsters';
-import { findBreedRecipe } from '../data/breeding';
+import { resolveBreedChild } from '../data/breeding';
+import { FAMILY_LABEL } from '../entity/MonsterDef';
 
 /** 牧場の仲間記録（成長を書き戻すため level / exp は可変） */
 export interface AllyRecord {
@@ -165,9 +166,7 @@ export class HomeBase {
     const da = MONSTER_MAP.get(a.defId);
     const db = MONSTER_MAP.get(b.defId);
     if (!da || !db) return { ok: false, message: '不明な種族だ。' };
-    const recipe = findBreedRecipe(a.defId, b.defId);
-    const childDef = recipe ? MONSTER_MAP.get(recipe.child) : da.rank >= db.rank ? da : db;
-    if (!childDef) return { ok: false, message: '不明な種族だ。' };
+    const { child: childDef, source } = resolveBreedChild(da, db);
     const levels = a.level + b.level;
     const child: AllySnapshot = {
       defId: childDef.id,
@@ -181,7 +180,12 @@ export class HomeBase {
     for (const idx of [i, j].sort((x, y) => y - x)) this.allies.splice(idx, 1);
     const rec = this.addAlly(child);
     if (!rec) return { ok: false, message: '牧場がいっぱいだ。' };
-    const born = recipe ? `新しい種族 ${childDef.name} が生まれた！` : `${childDef.name}が生まれた。`;
+    const born =
+      source === 'species'
+        ? `新しい種族 ${childDef.name} が生まれた！`
+        : source === 'family'
+          ? `${FAMILY_LABEL[da.family]}×${FAMILY_LABEL[db.family]}の系統配合で ${childDef.name} が生まれた！`
+          : `${childDef.name}が生まれた。`;
     return { ok: true, message: `${da.name}と${db.name}を配合した。${born}`, value: rec };
   }
 

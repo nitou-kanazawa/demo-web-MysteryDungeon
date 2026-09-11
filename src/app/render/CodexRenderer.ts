@@ -5,7 +5,8 @@ import { RECIPES } from '../../domain/data/recipes';
 import { CATEGORY_LABEL } from '../../domain/item/ItemDef';
 import { CODEX_TABS, CODEX_TAB_LABEL, type CodexView } from '../ui/CodexView';
 import { SKILL_MAP } from '../../domain/data/skills';
-import { BREED_RECIPES } from '../../domain/data/breeding';
+import { BREED_RECIPES, FAMILY_RECIPES } from '../../domain/data/breeding';
+import { FAMILY_LABEL } from '../../domain/entity/MonsterDef';
 import { FONT } from './RenderConfig';
 import { drawPanel } from './PanelStyle';
 import { SpriteArt } from './SpriteArt';
@@ -149,6 +150,7 @@ export class CodexRenderer {
           known: codex.monsters.has(m.id),
           image: { kind: 'monster', def: m },
           lines: [
+            `系統: ${FAMILY_LABEL[m.family]}  ランク ${m.rank}`,
             `HP ${m.hp}  攻撃 ${m.atk}  防御 ${m.def}  経験値 ${m.exp}`,
             m.maxFloor > 0 ? `出現階: ${m.minFloor}F〜${m.maxFloor}F` : m.id === 'gargoyle' ? '出現階: 店の番人（配合でも生まれる）' : '出現階: 配合でのみ生まれる',
             `行動回数: ${m.speed}/ターン`,
@@ -156,6 +158,9 @@ export class CodexRenderer {
             `特技: ${m.skills.length > 0 ? m.skills.map((s) => `${SKILL_MAP.get(s.id)?.name ?? s.id}(Lv${s.level})`).join('、') : 'なし'}`,
             ...BREED_RECIPES.filter((r) => r.child === m.id).map(
               (r) => `配合: ${r.parents.map((p) => ALL_MONSTER_DEFS.find((d) => d.id === p)?.name ?? p).join(' × ')}`,
+            ),
+            ...FAMILY_RECIPES.filter((r) => r.child === m.id).map(
+              (r) => `系統配合: ${r.families.map((f) => FAMILY_LABEL[f]).join(' × ')}`,
             ),
           ],
         }));

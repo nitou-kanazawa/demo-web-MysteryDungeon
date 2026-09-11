@@ -1,7 +1,21 @@
+/** 系統（配合の組み合わせに使う） */
+export type MonsterFamily = 'slime' | 'bird' | 'material' | 'dragon' | 'zombie' | 'beast' | 'devil';
+
+export const FAMILY_LABEL: Readonly<Record<MonsterFamily, string>> = {
+  slime: 'スライム系',
+  bird: '鳥系',
+  material: '物質系',
+  dragon: 'ドラゴン系',
+  zombie: 'ゾンビ系',
+  beast: '獣系',
+  devil: '悪魔系',
+};
+
 /** モンスターの静的定義（データテーブル） */
 export interface MonsterDef {
   readonly id: string;
   readonly name: string;
+  readonly family: MonsterFamily;
   readonly glyph: string;
   readonly color: string;
   readonly hp: number;

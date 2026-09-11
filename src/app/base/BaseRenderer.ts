@@ -8,6 +8,7 @@ import { SKIN_LABEL, renderSettings } from '../render/RenderSettings';
 import { MONSTER_MAP } from '../../domain/data/monsters';
 import { SKILL_MAP } from '../../domain/data/skills';
 import { Ally } from '../../domain/entity/Ally';
+import { FAMILY_LABEL } from '../../domain/entity/MonsterDef';
 
 /** 拠点画面（夜の村の広場）。ランタンの光で暖かみを出す */
 export class BaseRenderer {
@@ -123,7 +124,7 @@ export class BaseRenderer {
 
     const listX = x + 16;
     const listY = y + 44;
-    const rowH = 26;
+    const rowH = 30;
     g.textAlign = 'left';
     if (base.allies.length === 0) {
       g.font = `14px ${FONT}`;
@@ -145,6 +146,9 @@ export class BaseRenderer {
       g.font = `bold 14px ${FONT}`;
       g.fillStyle = i === breedFrom ? '#f472b6' : sel ? '#fff8e7' : '#d6cbb3';
       g.fillText(`${def?.name ?? a.defId}`, listX + 56, ry + 3);
+      g.font = `11px ${FONT}`;
+      g.fillStyle = '#8a7f6b';
+      if (def) g.fillText(FAMILY_LABEL[def.family], listX + 56, ry + 18);
       g.font = `13px ${FONT}`;
       g.fillStyle = '#b7aa8f';
       const bonus = a.bonusHp + a.bonusAtk + a.bonusDef > 0 ? `  配合+${a.bonusHp}/${a.bonusAtk}/${a.bonusDef}` : '';
