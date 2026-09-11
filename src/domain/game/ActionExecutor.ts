@@ -34,12 +34,20 @@ export class ActionExecutor {
     this.onGuardianKilled = handler;
   }
 
+  private onMoved: ((actor: Actor) => void) | undefined;
+
+  /** アクターが移動したあとに呼ばれる（跳ね床など） */
+  setMovedHandler(handler: (actor: Actor) => void): void {
+    this.onMoved = handler;
+  }
+
   /** dir へ 1 マス移動。地形・アクターに阻まれれば false */
   move(actor: Actor, dir: Direction): boolean {
     if (!this.state.map.canStep(actor.pos, dir)) return false;
     const to = addVec(actor.pos, DIR_VEC[dir]);
     if (this.state.isOccupied(to)) return false;
     actor.pos = to;
+    this.onMoved?.(actor);
     return true;
   }
 

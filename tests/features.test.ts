@@ -203,10 +203,12 @@ describe('番人', () => {
     st.monsters = [g];
     // 番人から 2 マス離れた直線上に立ち、1 歩近づいて隣接する
     const approach = DIRECTIONS.map((d) => ({ d, mid: addVec(g.pos, DIR_VEC[d]), far: addVec(g.pos, { x: DIR_VEC[d].x * 2, y: DIR_VEC[d].y * 2 }) })).find(
-      ({ mid, far }) => st.map.isWalkable(mid) && st.map.isWalkable(far) && !st.isOccupied(mid) && !st.isOccupied(far),
+      ({ mid, far }) => st.map.isWalkable(mid) && st.map.isWalkable(far) && !st.isOccupied(mid) && !st.isOccupied(far) && !st.featureAt(mid) && !st.featureAt(far),
     );
     if (!approach) return;
     st.player.pos = approach.far;
+    st.player.hp = 9999;
+    st.player.maxHp = 9999;
     const toward = DIRECTIONS.find((d) => { const p = addVec(st.player.pos, DIR_VEC[d]); return p.x === approach.mid.x && p.y === approach.mid.y; })!;
     if (!st.map.canStep(st.player.pos, toward)) return;
     s.execute({ type: 'move', dir: toward });
@@ -215,8 +217,6 @@ describe('番人', () => {
     // 撃破
     g.hp = 1;
     st.player.baseAtk = 999;
-    st.player.hp = 9999;
-    st.player.maxHp = 9999;
     const itemsBefore = [...st.groundItems].length;
     const atkDir = DIRECTIONS.find((d) => { const p = addVec(st.player.pos, DIR_VEC[d]); return p.x === g.pos.x && p.y === g.pos.y && st.map.canStep(st.player.pos, d); });
     if (!atkDir) return;

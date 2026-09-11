@@ -13,12 +13,14 @@ import { THEME_TILES, TILE_SPRITES } from './sprites/tileSprites';
 export class TileArt {
   private readonly frames: HTMLCanvasElement[] = [];
   private cachedMap: DungeonMap | undefined;
+  private cachedVersion = -1;
 
   /** frame: 0 か 1（水・雲のアニメ） */
   render(map: DungeonMap, theme: DungeonTheme, shopRoom: Room | undefined, frame: 0 | 1): HTMLCanvasElement {
-    if (this.cachedMap !== map) {
+    if (this.cachedMap !== map || this.cachedVersion !== map.version) {
       this.frames.length = 0;
       this.cachedMap = map;
+      this.cachedVersion = map.version;
     }
     const hit = this.frames[frame];
     if (hit) return hit;

@@ -71,6 +71,19 @@ const SIGN: PixelSprite = new PixelCanvas()
   .outline('#')
   .toSprite({ '#': '#1f2937', s: '#9ca3af', b: '#6b7280', i: '#374151' });
 
+/** 押せる岩 */
+const BOULDER: PixelSprite = new PixelCanvas()
+  .ellipse(15.5, 17, 11, 10, 'r')
+  .ellipse(11, 13, 4, 3, 'h')
+  .stamp(18, 18, ['d', 'dd']).stamp(8, 21, ['dd'])
+  .outline('#')
+  .toSprite({ '#': '#292524', r: '#78716c', h: '#a8a29e', d: '#57534e' });
+
+/** 崩落予告のひび */
+const CRACK: PixelSprite = new PixelCanvas()
+  .line(4, 6, 14, 14, 'c').line(14, 14, 10, 24, 'c').line(14, 14, 26, 10, 'c').line(20, 12, 24, 26, 'c')
+  .toSprite({ c: '#1f2937' });
+
 const TRAP_SPRITES: Readonly<Record<TrapKind, PixelSprite>> = {
   pitfall: PITFALL,
   mine: MINE,
@@ -91,6 +104,10 @@ export function featureSprite(f: TileFeature): PixelSprite | undefined {
       return f.effect === 'heal' ? FOUNTAIN_HEAL : FOUNTAIN_CURSE;
     case 'sign':
       return SIGN;
+    case 'boulder':
+      return BOULDER;
+    case 'crack':
+      return CRACK;
   }
 }
 
@@ -100,6 +117,8 @@ export const ALL_FEATURE_SPRITES: Readonly<Record<string, PixelSprite>> = {
   fountain_heal: FOUNTAIN_HEAL,
   fountain_curse: FOUNTAIN_CURSE,
   sign: SIGN,
+  boulder: BOULDER,
+  crack: CRACK,
 };
 
 /** 鍛冶屋のドワーフ（スキンに関係なく共通） */

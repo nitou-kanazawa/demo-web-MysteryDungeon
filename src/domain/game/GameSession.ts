@@ -37,6 +37,7 @@ import { SmithService } from './SmithService';
 import { Shopkeeper } from '../entity/Shopkeeper';
 import { Npc } from '../entity/Npc';
 import { chebyshev } from '../core/Vec2';
+import { CollapseEvent } from './FloorEvent';
 import type { ItemSnapshot } from '../item/ItemSnapshot';
 
 export interface SessionOptions {
@@ -128,6 +129,12 @@ export class GameSession {
       plantTrapOn: (target) => this.features.plantAndTrigger(target),
     });
     this.actions.setGuardianHandler((victim) => this.floors.dropGuardianReward(this.state, this.rng, victim.pos));
+    this.actions.setMovedHandler((actor) => {
+      if (actor.faction !== 'player') {
+        const f = this.state.featureAt(actor.pos);
+        if (f?.kind === 'spring') this.features.onEntered(actor, actor.pos);
+      }
+    });
 
     this.floors.build(this.state, this.rng);
     this.log.push(`ダンジョン ${this.state.floor}F。最深部 ${this.config.maxFloor}F の階段を目指せ！`);
@@ -247,6 +254,13 @@ export class GameSession {
     p.facing = dir;
     if (!this.state.map.canStep(p.pos, dir)) return { consumedTurn: false };
     const to = addVec(p.pos, DIR_VEC[dir]);
+    if (this.state.featureAt(to)?.kind === 'boulder') {
+      if (!this.features.pushBoulder(p.pos, dir)) return { consumedTurn: false };
+      const from = p.pos;
+      p.pos = to;
+      this.afterPlayerMoved(from);
+      return { consumedTurn: true };
+    }
     const other = this.state.actorAt(to);
     if (other) {
       if (other.faction === 'neutral') {
@@ -283,6 +297,7 @@ export class GameSession {
     this.checkMonsterHouse();
     this.features.onEntered(p, p.pos);
     if (this.state.status !== 'playing') return;
+    for (const e of this.state.events) if (e instanceof CollapseEvent) e.markVisited(this.state, p.pos);
     this.wakeGuardianIfAdjacent();
     const item = this.state.itemAt(p.pos);
     if (item) this.pickupAt(p.pos, item);
@@ -466,7 +481,7 @@ export class GameSession {
     let hit: Actor | undefined;
     for (let i = 0; i < 10; i++) {
       const next = addVec(last, DIR_VEC[p.facing]);
-      if (!this.state.map.passesProjectile(next)) break;
+      if (!this.state.map.passesProjectile(next) || this.state.featureAt(next)?.kind === 'boulder') break;
       hit = this.state.actorAt(next);
       if (hit) break;
       last = next;
@@ -593,5 +608,7 @@ export class GameSession {
     if (s.turn % this.config.respawnInterval === 0 && s.monsters.length < 10) {
       this.floors.spawnMonster(s, this.rng, true);
     }
+
+    for (const e of s.events) e.tick({ state: s, log: this.log });
   }
 }

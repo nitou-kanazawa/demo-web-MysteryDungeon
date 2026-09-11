@@ -7,6 +7,8 @@ export class DungeonMap {
   private readonly tiles: TileType[];
   readonly rooms: Room[] = [];
   private stairsPos: Vec2 | undefined;
+  /** タイルが書き換わるたびに増える（描画キャッシュの無効化用） */
+  version = 0;
 
   constructor(
     readonly width: number,
@@ -38,6 +40,7 @@ export class DungeonMap {
   set(p: Vec2, t: TileType): void {
     if (!this.inBounds(p)) return;
     this.tiles[this.index(p)] = t;
+    this.version++;
     if (t === TileType.Stairs) this.stairsPos = p;
   }
 

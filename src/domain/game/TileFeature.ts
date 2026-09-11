@@ -21,7 +21,11 @@ export type TileFeature =
   | { readonly kind: 'trap'; readonly trap: TrapKind; hidden: boolean }
   | { readonly kind: 'spring'; readonly dir: Direction }
   | { readonly kind: 'fountain'; readonly effect: 'heal' | 'curse'; uses: number }
-  | { readonly kind: 'sign'; readonly text: string };
+  | { readonly kind: 'sign'; readonly text: string }
+  /** 押せる岩。水・空に落とすと足場になる（水）／消える（空） */
+  | { readonly kind: 'boulder' }
+  /** 崩落予告のひび */
+  | { readonly kind: 'crack' };
 
 export const featureLabel = (f: TileFeature): string => {
   switch (f.kind) {
@@ -33,5 +37,9 @@ export const featureLabel = (f: TileFeature): string => {
       return f.effect === 'heal' ? '回復の泉' : '呪いの泉';
     case 'sign':
       return '石碑';
+    case 'boulder':
+      return '岩';
+    case 'crack':
+      return 'ひび';
   }
 };

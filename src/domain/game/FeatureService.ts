@@ -1,6 +1,7 @@
 import type { IdGenerator } from '../core/Id';
 import type { IRng } from '../core/Rng';
-import { DIRECTIONS, DIR_VEC, addVec, type Vec2 } from '../core/Vec2';
+import { DIRECTIONS, DIR_VEC, addVec, type Direction, type Vec2 } from '../core/Vec2';
+import { TileType } from '../map/Tile';
 import type { Actor } from '../entity/Actor';
 import { Monster } from '../entity/Monster';
 import { Player } from '../entity/Player';
@@ -53,7 +54,42 @@ export class FeatureService {
       case 'sign':
         if (actor instanceof Player) this.log.push(`石碑「${f.text}」`);
         break;
+      case 'boulder':
+      case 'crack':
+        break;
     }
+  }
+
+  /**
+   * 岩を dir 方向へ押す。押せたら true（プレイヤーはその後に岩のあった位置へ進む）。
+   * 先が水なら沈んで足場（床）に、空なら落ちて消える。壁・アクター・別の物があれば押せない。
+   */
+  pushBoulder(from: Vec2, dir: Direction): boolean {
+    const boulderPos = addVec(from, DIR_VEC[dir]);
+    const f = this.state.featureAt(boulderPos);
+    if (!f || f.kind !== 'boulder') return false;
+    const beyond = addVec(boulderPos, DIR_VEC[dir]);
+    const tile = this.state.map.get(beyond);
+    if (!this.state.map.inBounds(beyond) || tile === TileType.Wall || this.state.isOccupied(beyond) || this.state.featureAt(beyond)) {
+      this.log.push('岩はびくともしない。');
+      return false;
+    }
+    this.state.removeFeatureAt(boulderPos);
+    if (tile === TileType.Water) {
+      this.state.map.set(beyond, TileType.Floor);
+      this.log.push('岩が水に沈み、足場になった！');
+    } else if (tile === TileType.Void) {
+      this.log.push('岩は空の彼方へ落ちていった。');
+    } else {
+      const item = this.state.itemAt(beyond);
+      if (item) {
+        this.state.removeItemAt(beyond);
+        this.log.push(`${item.displayName}は岩に潰れた。`);
+      }
+      this.state.placeFeature(beyond, { kind: 'boulder' });
+      this.log.push('岩を押した。');
+    }
+    return true;
   }
 
   /** フロアの罠をすべて可視化する。可視化した数を返す */

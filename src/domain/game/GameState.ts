@@ -19,6 +19,7 @@ export interface MonsterHouseState {
 import type { Shopkeeper } from '../entity/Shopkeeper';
 import type { Npc } from '../entity/Npc';
 import type { TileFeature } from './TileFeature';
+import type { FloorEvent } from './FloorEvent';
 
 /** フロアの店。keeper が undefined なら店主は敵化済み */
 export interface ShopState {
@@ -41,6 +42,8 @@ export class GameState {
   monsterHouse: MonsterHouseState | undefined;
   /** 店主以外の中立 NPC（鍛冶屋など） */
   npcs: Npc[] = [];
+  /** フロアで毎ターン進む出来事 */
+  events: FloorEvent[] = [];
   private readonly features = new Map<string, TileFeature>();
   theme: ThemeDef = themeForFloor(1);
   /** 仲間への作戦 */
@@ -62,6 +65,7 @@ export class GameState {
     this.shop = undefined;
     this.monsterHouse = undefined;
     this.npcs = [];
+    this.events = [];
     this.features.clear();
     this.ground.clear();
   }
@@ -85,8 +89,9 @@ export class GameState {
     );
   }
 
+  /** アクターか岩がいて入れない */
   isOccupied(p: Vec2): boolean {
-    return this.actorAt(p) !== undefined;
+    return this.actorAt(p) !== undefined || this.featureAt(p)?.kind === 'boulder';
   }
 
   itemAt(p: Vec2): ItemInstance | undefined {
