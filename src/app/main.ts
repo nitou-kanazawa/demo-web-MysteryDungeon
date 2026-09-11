@@ -3,6 +3,7 @@ import { AppController } from './AppController';
 import { BaseRenderer } from './base/BaseRenderer';
 import { LocalStorageBaseStorage } from './base/BaseStorage';
 import { Renderer } from './render/Renderer';
+import { renderSettings } from './render/RenderSettings';
 
 function seedFromUrl(): number | undefined {
   const s = new URLSearchParams(location.search).get('seed');
@@ -14,6 +15,9 @@ function main(): void {
   const canvas = document.getElementById('game');
   if (!(canvas instanceof HTMLCanvasElement)) throw new Error('#game canvas not found');
   const fixedSeed = seedFromUrl();
+  renderSettings.load();
+  const skinParam = new URLSearchParams(location.search).get('skin');
+  if (skinParam === 'girl' || skinParam === 'classic') renderSettings.skin = skinParam;
   const app = new AppController(new LocalStorageBaseStorage(), () => fixedSeed ?? Date.now() >>> 0);
   const renderer = new Renderer(canvas, DEFAULT_GENERATOR_CONFIG.width, DEFAULT_GENERATOR_CONFIG.height);
   const baseRenderer = new BaseRenderer();

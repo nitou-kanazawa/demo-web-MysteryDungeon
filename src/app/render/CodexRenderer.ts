@@ -9,7 +9,6 @@ import { BREED_RECIPES } from '../../domain/data/breeding';
 import { FONT } from './RenderConfig';
 import { drawPanel } from './PanelStyle';
 import { SpriteArt } from './SpriteArt';
-import { ItemInstance } from '../../domain/item/ItemInstance';
 import type { ItemDef } from '../../domain/item/ItemDef';
 import type { MonsterDef } from '../../domain/entity/MonsterDef';
 
@@ -19,16 +18,6 @@ type CodexImage = { readonly kind: 'monster'; readonly def: MonsterDef } | { rea
 /** 図鑑画面。未発見の項目は ??? で表示する */
 export class CodexRenderer {
   private readonly sprites = new SpriteArt();
-  private readonly iconCache = new Map<string, ItemInstance>();
-
-  private itemFor(def: ItemDef): ItemInstance {
-    let it = this.iconCache.get(def.id);
-    if (!it) {
-      it = new ItemInstance(0, def);
-      this.iconCache.set(def.id, it);
-    }
-    return it;
-  }
 
   private drawImage(g: CanvasRenderingContext2D, img: CodexImage, cx: number, cy: number, scale: number, t: number, known: boolean): void {
     if (!known) {
@@ -44,7 +33,7 @@ export class CodexRenderer {
       return;
     }
     if (img.kind === 'monster') this.sprites.drawCreature(g, img.def, cx, cy, t, scale);
-    else this.sprites.drawItemIcon(g, this.itemFor(img.def), cx, cy, scale);
+    else this.sprites.drawItemDef(g, img.def, cx, cy, scale);
   }
 
   draw(g: CanvasRenderingContext2D, codex: Codex, view: CodexView, width: number, height: number, t = 0): void {
@@ -94,7 +83,7 @@ export class CodexRenderer {
         g.fillStyle = '#f5deb3';
         g.fillText('▶', listX + 4, ry);
       }
-      this.drawImage(g, e.image, listX + 36, ry + 10, 0.8, 0, e.known);
+      this.drawImage(g, e.image, listX + 36, ry + 10, 0.6, 0, e.known);
       g.textBaseline = 'top';
       g.textAlign = 'left';
       g.font = `14px ${FONT}`;
@@ -122,7 +111,7 @@ export class CodexRenderer {
     g.strokeStyle = 'rgba(201,169,97,0.5)';
     g.lineWidth = 1;
     g.strokeRect(fx + 0.5, fy + 0.5, fw - 1, fh - 1);
-    this.drawImage(g, sel.image, fx + fw / 2, fy + fh / 2 + 4, sel.image.kind === 'monster' ? 4.5 : 3.5, t, sel.known);
+    this.drawImage(g, sel.image, fx + fw / 2, fy + fh / 2 + 2, sel.image.kind === 'monster' ? 3.6 : 3.2, t, sel.known);
 
     const textX = dx + fw + 24;
     g.textAlign = 'left';

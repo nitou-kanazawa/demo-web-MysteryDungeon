@@ -7,6 +7,9 @@ export interface PixelSprite {
   readonly palette: Readonly<Record<string, string>>;
 }
 
+/** 本作のスプライトはすべて 32×32 */
+export const SPRITE_SIZE = 32;
+
 export const spriteWidth = (s: PixelSprite): number => s.rows[0]?.length ?? 0;
 export const spriteHeight = (s: PixelSprite): number => s.rows.length;
 
@@ -26,26 +29,30 @@ export class SpriteCache {
     const w = spriteWidth(sprite);
     const h = spriteHeight(sprite);
     const c = document.createElement('canvas');
-    c.width = Math.ceil(w * scale);
-    c.height = Math.ceil(h * scale);
+    c.width = Math.max(1, Math.ceil(w * scale));
+    c.height = Math.max(1, Math.ceil(h * scale));
     const g = c.getContext('2d');
     if (!g) throw new Error('2d context unavailable');
-    sprite.rows.forEach((row, y) => {
-      for (let x = 0; x < row.length; x++) {
-        const ch = row[x] ?? '.';
-        if (ch === '.') continue;
-        const color = sprite.palette[ch];
-        if (!color) continue;
-        g.fillStyle = color;
-        // 端の隙間を防ぐため床関数で境界を揃える
-        const x0 = Math.floor(x * scale);
-        const y0 = Math.floor(y * scale);
-        const x1 = Math.floor((x + 1) * scale);
-        const y1 = Math.floor((y + 1) * scale);
-        g.fillRect(x0, y0, x1 - x0, y1 - y0);
-      }
-    });
+    paintSprite(g, sprite, 0, 0, scale);
     this.cache.set(k, c);
     return c;
   }
+}
+
+/** スプライトを直接描く（キャッシュ不要な一回限りの描画用） */
+export function paintSprite(g: CanvasRenderingContext2D, sprite: PixelSprite, ox: number, oy: number, scale: number): void {
+  sprite.rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const ch = row[x] ?? '.';
+      if (ch === '.') continue;
+      const color = sprite.palette[ch];
+      if (!color) continue;
+      g.fillStyle = color;
+      const x0 = Math.floor(ox + x * scale);
+      const y0 = Math.floor(oy + y * scale);
+      const x1 = Math.floor(ox + (x + 1) * scale);
+      const y1 = Math.floor(oy + (y + 1) * scale);
+      g.fillRect(x0, y0, x1 - x0, y1 - y0);
+    }
+  });
 }

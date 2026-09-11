@@ -3,7 +3,8 @@ import { CodexRenderer } from '../render/CodexRenderer';
 import { drawPanel } from '../render/PanelStyle';
 import { FONT, hash2 } from '../render/RenderConfig';
 import { SpriteArt } from '../render/SpriteArt';
-import { BASE_MENU, RANCH_ACTIONS, type BaseMode } from './BaseController';
+import { BASE_MENU, RANCH_ACTIONS, SETTINGS_ITEMS, type BaseMode } from './BaseController';
+import { SKIN_LABEL, renderSettings } from '../render/RenderSettings';
 import { MONSTER_MAP } from '../../domain/data/monsters';
 import { SKILL_MAP } from '../../domain/data/skills';
 import { Ally } from '../../domain/entity/Ally';
@@ -46,7 +47,53 @@ export class BaseRenderer {
       case 'result':
         this.drawResult(g, mode.message, mode.notes, width, height);
         break;
+      case 'settings':
+        this.drawSettings(g, mode.cursor, width, height);
+        break;
     }
+  }
+
+  private drawSettings(g: CanvasRenderingContext2D, cursor: number, width: number, height: number): void {
+    const w = 520;
+    const h = 60 + SETTINGS_ITEMS.length * 30 + 120;
+    const x = (width - w) / 2;
+    const y = (height - h) / 2;
+    drawPanel(g, x, y, w, h, '設定');
+    g.font = `12px ${FONT}`;
+    g.fillStyle = '#6b7280';
+    g.textAlign = 'right';
+    g.textBaseline = 'top';
+    g.fillText('Enter / ← → 切替  Esc 戻る', x + w - 16, y + 14);
+    const values = [SKIN_LABEL[renderSettings.skin]];
+    SETTINGS_ITEMS.forEach((label, i) => {
+      const ly = y + 48 + i * 30;
+      const sel = i === cursor;
+      if (sel) {
+        g.fillStyle = 'rgba(201,169,97,0.18)';
+        g.fillRect(x + 10, ly - 5, w - 20, 28);
+        g.fillStyle = '#f5deb3';
+        g.font = `14px ${FONT}`;
+        g.textAlign = 'left';
+        g.fillText('▶', x + 18, ly);
+      }
+      g.font = `bold 15px ${FONT}`;
+      g.textAlign = 'left';
+      g.fillStyle = sel ? '#fff8e7' : '#d6cbb3';
+      g.fillText(label, x + 42, ly);
+      g.textAlign = 'right';
+      g.fillStyle = '#93c5fd';
+      g.fillText(`◀ ${values[i] ?? ''} ▶`, x + w - 24, ly);
+    });
+    // プレビュー（スライム・ドラキー・キメラ）
+    const py = y + h - 60;
+    ['slime', 'dracky', 'chimaera', 'dragon'].forEach((id, i) => {
+      const def = MONSTER_MAP.get(id);
+      if (def) this.sprites.drawCreature(g, def, x + 80 + i * 110, py, 0, 1.4);
+    });
+    g.font = `12px ${FONT}`;
+    g.fillStyle = '#9c8f78';
+    g.textAlign = 'left';
+    g.fillText('見た目だけの切り替えで、種族・能力・図鑑の記録は変わりません。', x + 16, y + h - 24);
   }
 
   /** 牧場: 仲間一覧。actionCursor があればアクション窓、breedFrom があれば配合相手の選択 */
@@ -94,7 +141,7 @@ export class BaseRenderer {
         g.font = `14px ${FONT}`;
         g.fillText('▶', listX + 4, ry + 3);
       }
-      if (def) this.sprites.drawCreature(g, def, listX + 36, ry + 8, 0, 0.9);
+      if (def) this.sprites.drawCreature(g, def, listX + 36, ry + 10, 0, 0.7);
       g.font = `bold 14px ${FONT}`;
       g.fillStyle = i === breedFrom ? '#f472b6' : sel ? '#fff8e7' : '#d6cbb3';
       g.fillText(`${def?.name ?? a.defId}`, listX + 56, ry + 3);
@@ -235,9 +282,9 @@ export class BaseRenderer {
     g.fillStyle = glow;
     g.fillRect(lx - 300, ly - 300, 600, 600);
     // 主人公と連れて行く仲間
-    this.sprites.drawHeroAt(g, width / 2 - 24, groundY - 48, t, 3);
+    this.sprites.drawHeroAt(g, width / 2 - 32, groundY - 64, t, 2);
     this.partyDefs.forEach((def, i) => {
-      this.sprites.drawCreature(g, def, width / 2 - 70 - i * 52, groundY - 20, t + i * 300, 1.8);
+      this.sprites.drawCreature(g, def, width / 2 - 80 - i * 64, groundY - 30, t + i * 300, 1.8);
     });
     // 看板
     g.font = `bold 26px ${FONT}`;
@@ -299,7 +346,7 @@ export class BaseRenderer {
     });
     g.font = `12px ${FONT}`;
     g.fillStyle = '#6b7280';
-    g.fillText('↑↓ 選択  Enter 決定  M 図鑑', x, y - 18);
+    g.fillText(`↑↓ 選択  Enter 決定  M 図鑑   見た目: ${SKIN_LABEL[renderSettings.skin]}`, x, y - 18);
     void width;
   }
 

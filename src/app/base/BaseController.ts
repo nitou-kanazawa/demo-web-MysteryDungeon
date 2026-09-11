@@ -1,5 +1,6 @@
 import type { HomeBase } from '../../domain/base/HomeBase';
 import { handleCodexKey, newCodexView, type CodexView } from '../ui/CodexView';
+import { renderSettings } from '../render/RenderSettings';
 
 export type BaseMode =
   | { readonly kind: 'menu'; cursor: number }
@@ -8,9 +9,11 @@ export type BaseMode =
   | { readonly kind: 'ranchAction'; readonly index: number; cursor: number }
   | { readonly kind: 'breedSelect'; readonly index: number; cursor: number }
   | { readonly kind: 'codex'; readonly view: CodexView }
+  | { readonly kind: 'settings'; cursor: number }
   | { readonly kind: 'result'; readonly message: string; readonly notes: readonly string[] };
 
-export const BASE_MENU = ['出撃する', '牧場', '倉庫', '図鑑'] as const;
+export const BASE_MENU = ['出撃する', '牧場', '倉庫', '図鑑', '設定'] as const;
+export const SETTINGS_ITEMS = ['敵の見た目'] as const;
 export const RANCH_ACTIONS = ['連れて行く／留守番', '配合する', '逃がす', '戻る'] as const;
 
 /** 拠点画面の入力処理。出撃要求だけを外へ伝える */
@@ -46,7 +49,22 @@ export class BaseController {
         if (r === 'close') this.mode = { kind: 'menu', cursor: 3 };
         return r !== false;
       }
+      case 'settings':
+        return this.handleSettings(e, this.mode);
     }
+  }
+
+  private handleSettings(e: KeyboardEvent, mode: { cursor: number }): boolean {
+    if (this.isCancel(e)) {
+      this.mode = { kind: 'menu', cursor: 4 };
+      return true;
+    }
+    if (this.moveCursor(mode, e, SETTINGS_ITEMS.length)) return true;
+    if (this.isConfirm(e) || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+      if (mode.cursor === 0) renderSettings.cycleSkin();
+      return true;
+    }
+    return false;
   }
 
   private isConfirm(e: KeyboardEvent): boolean {
@@ -90,6 +108,9 @@ export class BaseController {
         return true;
       case 3:
         this.mode = { kind: 'codex', view: newCodexView() };
+        return true;
+      case 4:
+        this.mode = { kind: 'settings', cursor: 0 };
         return true;
       default:
         return false;

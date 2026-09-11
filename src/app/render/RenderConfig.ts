@@ -1,4 +1,4 @@
-export const TILE = 24;
+export const TILE = 32;
 export const HUD_HEIGHT = 40;
 export const LOG_LINES = 4;
 export const LOG_HEIGHT = 20 * LOG_LINES + 12;
