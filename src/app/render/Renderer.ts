@@ -85,6 +85,6 @@ export class Renderer {
     this.hud.drawTop(g, session, this.width);
     this.hud.drawLog(g, session, oy + state.map.height * TILE, this.width);
     this.menus.draw(g, session, mode, this.width, this.height);
-    if (mode.kind === 'codex') this.codex.draw(g, session.codex, mode.view, this.width, this.height);
+    if (mode.kind === 'codex') this.codex.draw(g, session.codex, mode.view, this.width, this.height, t);
   }
 }

@@ -1,19 +1,66 @@
 import type { Actor } from '../../domain/entity/Actor';
 import type { ItemInstance } from '../../domain/item/ItemInstance';
 import { FONT, TILE } from './RenderConfig';
+import { HERO_SPRITE } from './sprites/heroSprite';
+import { MONSTER_SPRITES } from './sprites/monsterSprites';
+import { SpriteCache, spriteHeight, spriteWidth, type PixelSprite } from './sprites/PixelSprite';
+
+/** 種族の見た目を引くための最小情報（Actor でも MonsterDef でもよい） */
+export interface CreatureLook {
+  readonly id: string;
+  readonly glyph: string;
+  readonly color: string;
+}
 
 /** アクター・アイテムをプリミティブで描く（アセット不要の簡易スプライト） */
 export class SpriteArt {
-  /** 拠点画面などで種族の見た目だけを描く */
-  drawCreature(g: CanvasRenderingContext2D, glyph: string, color: string, cx: number, cy: number, t: number, scale: number): void {
+  private readonly cache = new SpriteCache();
+
+  /** 種族IDに対応するスプライト（無ければ undefined → 旧来の丸い図案にフォールバック） */
+  spriteFor(defId: string): PixelSprite | undefined {
+    return MONSTER_SPRITES[defId];
+  }
+
+  /**
+   * ピクセルスプライトを中心 (cx, cy) に描く。scale はピクセル倍率。
+   * bob: 上下の揺れ、squash: 縦のつぶれ（呼吸アニメ）
+   */
+  drawSprite(
+    g: CanvasRenderingContext2D,
+    key: string,
+    sprite: PixelSprite,
+    cx: number,
+    cy: number,
+    scale: number,
+    squash = 1,
+  ): void {
+    const img = this.cache.get(key, sprite, scale);
+    const w = spriteWidth(sprite) * scale;
+    const h = spriteHeight(sprite) * scale;
+    g.save();
+    g.imageSmoothingEnabled = false;
+    g.translate(cx, cy + h / 2);
+    g.scale(1 / squash, squash);
+    g.drawImage(img, -w / 2, -h, w, h);
+    g.restore();
+  }
+
+  /** 拠点・図鑑などで種族の見た目だけを描く。(cx, cy) は絵の中心、scale はタイル倍率（1 = 24px） */
+  drawCreature(g: CanvasRenderingContext2D, look: CreatureLook, cx: number, cy: number, t: number, scale: number): void {
+    const sprite = this.spriteFor(look.id);
+    g.fillStyle = 'rgba(0,0,0,0.4)';
+    g.beginPath();
+    g.ellipse(cx, cy + TILE * 0.46 * scale, TILE * 0.36 * scale, TILE * 0.12 * scale, 0, 0, Math.PI * 2);
+    g.fill();
+    if (sprite) {
+      const squash = 1 + Math.sin(t / 320) * 0.03;
+      this.drawSprite(g, look.id, sprite, cx, cy, (TILE / 16) * scale, squash);
+      return;
+    }
     g.save();
     g.translate(cx, cy);
     g.scale(scale, scale);
-    g.fillStyle = 'rgba(0,0,0,0.4)';
-    g.beginPath();
-    g.ellipse(0, TILE * 0.42, TILE * 0.36, TILE * 0.14, 0, 0, Math.PI * 2);
-    g.fill();
-    this.drawMonster(g, { id: 0, glyph, color } as Actor, 0, 0, t);
+    this.drawMonster(g, { id: 0, glyph: look.glyph, color: look.color } as Actor, 0, 0, t);
     g.restore();
   }
 
@@ -29,8 +76,15 @@ export class SpriteArt {
     if (a.faction === 'player') {
       this.drawHero(g, px, py, t);
     } else {
-      if (a.faction === 'neutral' || a.name === 'ガーゴイル') this.drawWings(g, cx, cy);
-      this.drawMonster(g, a, cx, cy, t);
+      const defId = (a as { definition?: { id: string } }).definition?.id;
+      const sprite = defId ? this.spriteFor(defId) : undefined;
+      if (sprite && defId) {
+        const squash = 1 + Math.sin(t / 280 + a.id) * 0.04;
+        this.drawSprite(g, defId, sprite, cx, py + TILE / 2 - 1, TILE / 16, squash);
+      } else {
+        if (a.faction === 'neutral' || a.name === 'ガーゴイル') this.drawWings(g, cx, cy);
+        this.drawMonster(g, a, cx, cy, t);
+      }
     }
 
     if (a.faction === 'ally') {
@@ -63,30 +117,25 @@ export class SpriteArt {
     else if (a.hasStatus('confusion')) this.drawStatusMark(g, px, py, '？', '#facc15');
   }
 
-  /** 主人公: 赤いバンダナの盗賊風ピクセル図案 */
+  /** 主人公（タイル内） */
   private drawHero(g: CanvasRenderingContext2D, px: number, py: number, t: number): void {
-    this.drawHeroAt(g, px + 4, py + 2, t, 1);
+    const bob = Math.sin(t / 260) > 0 ? 1 : 0;
+    this.drawSprite(g, 'hero', HERO_SPRITE, px + TILE / 2, py + TILE / 2 - 1 + bob, TILE / 16);
   }
 
-  /** 拠点画面などで任意の位置・倍率で主人公を描く */
+  /** 拠点画面などで任意の位置・倍率で主人公を描く（x0, y0 は左上、scale はピクセル倍率） */
   drawHeroAt(g: CanvasRenderingContext2D, x0: number, y0: number, t: number, scale: number): void {
-    const bob = Math.round(Math.sin(t / 260) * 1);
-    const x = x0;
-    const y = y0 + bob;
-    const P = (col: string, rx: number, ry: number, w: number, h: number): void => {
-      g.fillStyle = col;
-      g.fillRect(x + rx * scale, y + ry * scale, w * scale, h * scale);
-    };
-    P('#c0392b', 3, 0, 10, 4); // バンダナ
-    P('#e74c3c', 12, 1, 4, 2); // バンダナの結び目
-    P('#f1c27d', 4, 4, 8, 6); // 顔
-    P('#3b2412', 6, 6, 2, 2); // 目
-    P('#3b2412', 9, 6, 2, 2);
-    P('#2e8b57', 3, 10, 10, 6); // 服
-    P('#8b5a2b', 3, 16, 3, 4); // 足
-    P('#8b5a2b', 10, 16, 3, 4);
-    P('#d9d9d9', 13, 9, 2, 8); // 剣
-    P('#8b5a2b', 12, 16, 4, 2);
+    const bob = Math.sin(t / 260) > 0 ? scale : 0;
+    this.drawSprite(g, 'hero', HERO_SPRITE, x0 + 8 * scale, y0 + 8 * scale + bob, scale);
+  }
+
+  /** 図鑑などでアイテムのアイコンを拡大して描く（中心指定） */
+  drawItemIcon(g: CanvasRenderingContext2D, item: ItemInstance, cx: number, cy: number, scale: number): void {
+    g.save();
+    g.translate(cx, cy);
+    g.scale(scale, scale);
+    this.drawItem(g, item, -TILE / 2, -TILE / 2);
+    g.restore();
   }
 
   private drawMonster(g: CanvasRenderingContext2D, a: Actor, cx: number, cy: number, t: number): void {

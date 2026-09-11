@@ -8,10 +8,46 @@ import { SKILL_MAP } from '../../domain/data/skills';
 import { BREED_RECIPES } from '../../domain/data/breeding';
 import { FONT } from './RenderConfig';
 import { drawPanel } from './PanelStyle';
+import { SpriteArt } from './SpriteArt';
+import { ItemInstance } from '../../domain/item/ItemInstance';
+import type { ItemDef } from '../../domain/item/ItemDef';
+import type { MonsterDef } from '../../domain/entity/MonsterDef';
+
+/** 図鑑の1項目の絵。種族か、アイテム定義か */
+type CodexImage = { readonly kind: 'monster'; readonly def: MonsterDef } | { readonly kind: 'item'; readonly def: ItemDef };
 
 /** 図鑑画面。未発見の項目は ??? で表示する */
 export class CodexRenderer {
-  draw(g: CanvasRenderingContext2D, codex: Codex, view: CodexView, width: number, height: number): void {
+  private readonly sprites = new SpriteArt();
+  private readonly iconCache = new Map<string, ItemInstance>();
+
+  private itemFor(def: ItemDef): ItemInstance {
+    let it = this.iconCache.get(def.id);
+    if (!it) {
+      it = new ItemInstance(0, def);
+      this.iconCache.set(def.id, it);
+    }
+    return it;
+  }
+
+  private drawImage(g: CanvasRenderingContext2D, img: CodexImage, cx: number, cy: number, scale: number, t: number, known: boolean): void {
+    if (!known) {
+      g.fillStyle = 'rgba(255,255,255,0.06)';
+      g.beginPath();
+      g.arc(cx, cy, 12 * scale, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#5b5566';
+      g.font = `bold ${10 * scale}px ${FONT}`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText('?', cx, cy);
+      return;
+    }
+    if (img.kind === 'monster') this.sprites.drawCreature(g, img.def, cx, cy, t, scale);
+    else this.sprites.drawItemIcon(g, this.itemFor(img.def), cx, cy, scale);
+  }
+
+  draw(g: CanvasRenderingContext2D, codex: Codex, view: CodexView, width: number, height: number, t = 0): void {
     const w = Math.min(900, width - 40);
     const h = Math.min(560, height - 40);
     const x = (width - w) / 2;
@@ -43,7 +79,7 @@ export class CodexRenderer {
     const listX = x + 16;
     const listY = y + 48;
     const listW = 300;
-    const rowH = 20;
+    const rowH = 24;
     const maxRows = Math.floor((h - 64) / rowH);
     const entries = this.entries(codex, view);
     const start = Math.max(0, Math.min(view.cursor - Math.floor(maxRows / 2), entries.length - maxRows));
@@ -58,8 +94,12 @@ export class CodexRenderer {
         g.fillStyle = '#f5deb3';
         g.fillText('▶', listX + 4, ry);
       }
+      this.drawImage(g, e.image, listX + 36, ry + 10, 0.8, 0, e.known);
+      g.textBaseline = 'top';
+      g.textAlign = 'left';
+      g.font = `14px ${FONT}`;
       g.fillStyle = e.known ? (i === view.cursor ? '#fff8e7' : '#d6cbb3') : '#5b5566';
-      g.fillText(`${String(i + 1).padStart(2, '0')}  ${e.known ? e.name : '？？？'}`, listX + 24, ry);
+      g.fillText(`${String(i + 1).padStart(2, '0')}  ${e.known ? e.name : '？？？'}`, listX + 52, ry + 3);
     }
 
     // 詳細
@@ -72,17 +112,33 @@ export class CodexRenderer {
     g.stroke();
     const sel = entries[view.cursor];
     if (!sel) return;
+    // 大きな絵（額縁つき）
+    const fx = dx;
+    const fy = dy;
+    const fw = 150;
+    const fh = 150;
+    g.fillStyle = 'rgba(255,255,255,0.04)';
+    g.fillRect(fx, fy, fw, fh);
+    g.strokeStyle = 'rgba(201,169,97,0.5)';
+    g.lineWidth = 1;
+    g.strokeRect(fx + 0.5, fy + 0.5, fw - 1, fh - 1);
+    this.drawImage(g, sel.image, fx + fw / 2, fy + fh / 2 + 4, sel.image.kind === 'monster' ? 4.5 : 3.5, t, sel.known);
+
+    const textX = dx + fw + 24;
+    g.textAlign = 'left';
+    g.textBaseline = 'top';
     if (!sel.known) {
+      g.font = `14px ${FONT}`;
       g.fillStyle = '#8a7f6b';
-      g.fillText('まだ発見していない。', dx, dy);
+      g.fillText('まだ発見していない。', textX, dy);
       return;
     }
-    g.font = `bold 18px ${FONT}`;
+    g.font = `bold 20px ${FONT}`;
     g.fillStyle = '#f5deb3';
-    g.fillText(sel.name, dx, dy);
+    g.fillText(sel.name, textX, dy);
     g.font = `14px ${FONT}`;
     g.fillStyle = '#e8dcc0';
-    sel.lines.forEach((l, i) => g.fillText(l, dx, dy + 34 + i * 22));
+    sel.lines.forEach((l, i) => g.fillText(l, textX, dy + 36 + i * 22));
   }
 
   private countLabel(codex: Codex, tab: CodexView['tab']): string {
@@ -96,12 +152,13 @@ export class CodexRenderer {
     }
   }
 
-  private entries(codex: Codex, view: CodexView): Array<{ name: string; known: boolean; lines: string[] }> {
+  private entries(codex: Codex, view: CodexView): Array<{ name: string; known: boolean; lines: string[]; image: CodexImage }> {
     switch (view.tab) {
       case 'monsters':
         return ALL_MONSTER_DEFS.map((m) => ({
           name: m.name,
           known: codex.monsters.has(m.id),
+          image: { kind: 'monster', def: m },
           lines: [
             `HP ${m.hp}  攻撃 ${m.atk}  防御 ${m.def}  経験値 ${m.exp}`,
             m.maxFloor > 0 ? `出現階: ${m.minFloor}F〜${m.maxFloor}F` : m.id === 'gargoyle' ? '出現階: 店の番人（配合でも生まれる）' : '出現階: 配合でのみ生まれる',
@@ -117,6 +174,7 @@ export class CodexRenderer {
         return ITEM_DEFS.filter((d) => d.category !== 'gold').map((d) => ({
           name: d.name,
           known: codex.items.has(d.id),
+          image: { kind: 'item', def: d },
           lines: [
             `種類: ${CATEGORY_LABEL[d.category]}`,
             `買値: ${d.price}G  売値: ${Math.floor(d.price / 2)}G`,
@@ -130,6 +188,7 @@ export class CodexRenderer {
           return {
             name: out?.name ?? r.output,
             known,
+            image: out ? { kind: 'item', def: out } : { kind: 'item', def: ITEM_DEFS[0] as ItemDef },
             lines: [
               `素材: ${r.inputs.map((i) => ITEM_MAP.get(i)?.name ?? i).join(' + ')}`,
               `完成まで: ${r.turns} ターン`,

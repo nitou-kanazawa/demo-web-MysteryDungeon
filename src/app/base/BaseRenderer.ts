@@ -15,7 +15,7 @@ export class BaseRenderer {
   /** 牧場画面の下に出す通知（BaseController.notice を受け取る） */
   notice = '';
 
-  private partyDefs: Array<{ glyph: string; color: string }> = [];
+  private partyDefs: Array<{ id: string; glyph: string; color: string }> = [];
 
   render(g: CanvasRenderingContext2D, base: HomeBase, mode: BaseMode, width: number, height: number, t: number): void {
     this.partyDefs = base.allies
@@ -41,7 +41,7 @@ export class BaseRenderer {
         this.drawRanch(g, base, mode.cursor, undefined, mode.index, width, height);
         break;
       case 'codex':
-        this.codex.draw(g, base.codex, mode.view, width, height);
+        this.codex.draw(g, base.codex, mode.view, width, height, t);
         break;
       case 'result':
         this.drawResult(g, mode.message, mode.notes, width, height);
@@ -94,7 +94,7 @@ export class BaseRenderer {
         g.font = `14px ${FONT}`;
         g.fillText('▶', listX + 4, ry + 3);
       }
-      if (def) this.sprites.drawCreature(g, def.glyph, def.color, listX + 36, ry + 11, 0, 0.8);
+      if (def) this.sprites.drawCreature(g, def, listX + 36, ry + 8, 0, 0.9);
       g.font = `bold 14px ${FONT}`;
       g.fillStyle = i === breedFrom ? '#f472b6' : sel ? '#fff8e7' : '#d6cbb3';
       g.fillText(`${def?.name ?? a.defId}`, listX + 56, ry + 3);
@@ -235,9 +235,9 @@ export class BaseRenderer {
     g.fillStyle = glow;
     g.fillRect(lx - 300, ly - 300, 600, 600);
     // 主人公と連れて行く仲間
-    this.sprites.drawHeroAt(g, width / 2 - 12, groundY - 30, t, 2);
+    this.sprites.drawHeroAt(g, width / 2 - 24, groundY - 48, t, 3);
     this.partyDefs.forEach((def, i) => {
-      this.sprites.drawCreature(g, def.glyph, def.color, width / 2 - 60 - i * 44, groundY - 14, t + i * 300, 1.6);
+      this.sprites.drawCreature(g, def, width / 2 - 70 - i * 52, groundY - 20, t + i * 300, 1.8);
     });
     // 看板
     g.font = `bold 26px ${FONT}`;
