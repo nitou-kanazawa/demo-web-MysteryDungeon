@@ -8,6 +8,14 @@ import type { DungeonMap } from '../map/DungeonMap';
 import { Visibility } from '../map/Visibility';
 import type { Room } from '../map/Room';
 import type { Tactic } from './Tactic';
+import type { ThemeDef } from '../data/themes';
+import { themeForFloor } from '../data/themes';
+
+/** モンスターハウス。triggered になると中の敵が起きる */
+export interface MonsterHouseState {
+  readonly room: Room;
+  triggered: boolean;
+}
 import type { Shopkeeper } from '../entity/Shopkeeper';
 
 /** フロアの店。keeper が undefined なら店主は敵化済み */
@@ -28,6 +36,8 @@ export class GameState {
   monsters: Monster[] = [];
   allies: Ally[] = [];
   shop: ShopState | undefined;
+  monsterHouse: MonsterHouseState | undefined;
+  theme: ThemeDef = themeForFloor(1);
   /** 仲間への作戦 */
   tactic: Tactic = 'aggressive';
   private readonly ground = new Map<string, ItemInstance>();
@@ -45,6 +55,7 @@ export class GameState {
     this.visibility = new Visibility(map);
     this.monsters = [];
     this.shop = undefined;
+    this.monsterHouse = undefined;
     this.ground.clear();
   }
 

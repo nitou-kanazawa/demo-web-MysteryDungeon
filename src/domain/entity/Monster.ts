@@ -6,6 +6,8 @@ import { SKILL_MAP, type SkillDef } from '../data/skills';
 export class Monster extends Actor {
   /** プレイヤーを最後に見た位置（追跡用） */
   lastSeenPlayerPos: Vec2 | undefined;
+  /** モンスターハウスなどで眠っている（起きるまで行動しない） */
+  asleep = false;
 
   constructor(
     id: number,

@@ -10,6 +10,7 @@ import { TileType } from '../map/Tile';
 import type { GameState } from './GameState';
 import { findFreeTileNear } from './Placement';
 import type { ShopService } from './ShopService';
+import { themeForFloor } from '../data/themes';
 import type { Room } from '../map/Room';
 
 /** フロアの生成と初期配置（プレイヤー・仲間・敵・アイテム） */
@@ -25,7 +26,8 @@ export class FloorBuilder {
   ) {}
 
   build(state: GameState, rng: IRng): void {
-    const map = this.generator.generate(rng);
+    state.theme = themeForFloor(state.floor);
+    const map = this.generator.generate(rng, state.theme.solid);
     state.replaceMap(map);
 
     const startRoom = rng.pick(map.rooms);
@@ -44,6 +46,11 @@ export class FloorBuilder {
       }
     }
 
+    if (state.floor >= this.config.monsterHouseMinFloor && rng.chance(this.config.monsterHouseChance)) {
+      const candidates = map.rooms.filter((r) => r !== startRoom && r !== state.shop?.room);
+      if (candidates.length > 0) this.buildMonsterHouse(state, rng.pick(candidates), rng);
+    }
+
     const [mMin, mMax] = this.config.monstersPerFloor;
     for (let i = 0; i < rng.int(mMin, mMax); i++) this.spawnMonster(state, rng, true);
 
@@ -53,13 +60,37 @@ export class FloorBuilder {
     state.visibility.update(state.player.pos);
   }
 
+  /** モンスターハウス: 部屋いっぱいの眠った敵とアイテム */
+  private buildMonsterHouse(state: GameState, room: Room, rng: IRng): void {
+    state.monsterHouse = { room, triggered: false };
+    const tiles = rng.shuffle([...room.tiles()].filter((t) => state.map.get(t) !== TileType.Stairs));
+    const area = room.w * room.h;
+    const monsterCount = Math.min(12, Math.max(4, Math.floor(area / 4)));
+    const itemCount = Math.min(8, Math.max(3, Math.floor(area / 6)));
+    const candidates = this.monsterDefs.filter((d) => state.floor + 1 >= d.minFloor && state.floor <= d.maxFloor);
+    for (let i = 0; i < monsterCount && tiles.length > 0; i++) {
+      const p = tiles.pop() as Vec2;
+      if (state.isOccupied(p) || candidates.length === 0) continue;
+      const m = new Monster(this.ids.generate(), rng.pick(candidates), p);
+      m.asleep = true;
+      state.monsters.push(m);
+    }
+    for (let i = 0; i < itemCount && tiles.length > 0; i++) {
+      const p = tiles.pop() as Vec2;
+      const entry = this.pickWeighted(state.floor, rng);
+      if (entry) state.placeItem(p, this.factory.create(entry.defId, rng));
+    }
+  }
+
   /** プレイヤーの部屋を避けてモンスターを1体湧かせる */
   spawnMonster(state: GameState, rng: IRng, avoidPlayerRoom: boolean): Monster | undefined {
     const candidates = this.monsterDefs.filter((d) => state.floor >= d.minFloor && state.floor <= d.maxFloor);
     if (candidates.length === 0) return undefined;
     const def = rng.pick(candidates);
     const playerRoom = state.map.roomAt(state.player.pos);
-    const rooms = state.map.rooms.filter((r) => (!avoidPlayerRoom || r !== playerRoom) && !this.isShopRoom(state, r));
+    const rooms = state.map.rooms.filter(
+      (r) => (!avoidPlayerRoom || r !== playerRoom) && !this.isShopRoom(state, r) && r !== state.monsterHouse?.room,
+    );
     if (rooms.length === 0) return undefined;
     const room = rng.pick(rooms);
     for (let attempt = 0; attempt < 20; attempt++) {
@@ -76,7 +107,7 @@ export class FloorBuilder {
   private spawnItem(state: GameState, rng: IRng): void {
     const entry = this.pickWeighted(state.floor, rng);
     if (!entry) return;
-    const rooms = state.map.rooms.filter((r) => !this.isShopRoom(state, r));
+    const rooms = state.map.rooms.filter((r) => !this.isShopRoom(state, r) && r !== state.monsterHouse?.room);
     if (rooms.length === 0) return;
     const room = rng.pick(rooms);
     for (let attempt = 0; attempt < 20; attempt++) {

@@ -50,6 +50,10 @@ export interface FloorConfig {
   readonly shopChance: number;
   /** 店の商品数 */
   readonly shopItems: readonly [number, number];
+  /** モンスターハウスの生成確率 */
+  readonly monsterHouseChance: number;
+  /** モンスターハウスが出る最初の階 */
+  readonly monsterHouseMinFloor: number;
 }
 
 export const DEFAULT_FLOOR_CONFIG: FloorConfig = {
@@ -62,4 +66,6 @@ export const DEFAULT_FLOOR_CONFIG: FloorConfig = {
   respawnInterval: 40,
   shopChance: 0.35,
   shopItems: [3, 6],
+  monsterHouseChance: 0.2,
+  monsterHouseMinFloor: 3,
 };

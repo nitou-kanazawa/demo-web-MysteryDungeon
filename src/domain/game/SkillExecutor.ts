@@ -37,8 +37,9 @@ export class SkillExecutor {
         let p = user.pos;
         let hit = 0;
         for (let i = 0; i < skill.range; i++) {
-          if (!this.state.map.canStep(p, dir)) break;
-          p = addVec(p, DIR_VEC[dir]);
+          const next = addVec(p, DIR_VEC[dir]);
+          if (!this.state.map.passesProjectile(next)) break;
+          p = next;
           const a = this.state.actorAt(p);
           if (a && isHostile(user, a)) {
             this.actions.dealDamage(user, a, skill.power);

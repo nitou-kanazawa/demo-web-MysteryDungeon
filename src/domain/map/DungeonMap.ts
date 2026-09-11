@@ -1,6 +1,6 @@
 import { DIR_VEC, isDiagonal, type Direction, type Vec2, addVec } from '../core/Vec2';
 import { Room } from './Room';
-import { TileType, isWalkableTile } from './Tile';
+import { TileType, blocksProjectile, isWalkableTile } from './Tile';
 
 /** ダンジョン1フロアの地形。地形以外（アクター・アイテム）は持たない */
 export class DungeonMap {
@@ -11,8 +11,10 @@ export class DungeonMap {
   constructor(
     readonly width: number,
     readonly height: number,
+    /** 部屋・通路以外を埋めるタイル（壁／水／空） */
+    readonly solid: TileType = TileType.Wall,
   ) {
-    this.tiles = new Array<TileType>(width * height).fill(TileType.Wall);
+    this.tiles = new Array<TileType>(width * height).fill(solid);
   }
 
   inBounds(p: Vec2): boolean {
@@ -25,7 +27,12 @@ export class DungeonMap {
 
   get(p: Vec2): TileType {
     if (!this.inBounds(p)) return TileType.Wall;
-    return this.tiles[this.index(p)] ?? TileType.Wall;
+    return this.tiles[this.index(p)] ?? this.solid;
+  }
+
+  /** 投擲物・魔法弾・ブレスが p を通過できるか（水・空は通る） */
+  passesProjectile(p: Vec2): boolean {
+    return this.inBounds(p) && !blocksProjectile(this.get(p));
   }
 
   set(p: Vec2, t: TileType): void {

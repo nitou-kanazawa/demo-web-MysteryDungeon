@@ -252,9 +252,24 @@ export class GameSession {
   private afterPlayerMoved(from: Vec2): void {
     const p = this.state.player;
     this.shops.onPlayerMoved(this.state, from);
+    this.checkMonsterHouse();
     const item = this.state.itemAt(p.pos);
     if (item) this.pickupAt(p.pos, item);
     if (this.state.map.get(p.pos) === TileType.Stairs) this.log.push('階段がある。（Enterで降りる）');
+  }
+
+  /** モンスターハウスに足を踏み入れたら中の敵を起こす */
+  private checkMonsterHouse(): void {
+    const house = this.state.monsterHouse;
+    if (!house || house.triggered || !house.room.contains(this.state.player.pos)) return;
+    house.triggered = true;
+    this.log.push('モンスターハウスだ！');
+    for (const m of this.state.monsters) {
+      if (house.room.contains(m.pos) && m.asleep) {
+        m.asleep = false;
+        m.lastSeenPlayerPos = this.state.player.pos;
+      }
+    }
   }
 
   private pickupAt(pos: Vec2, item: ItemInstance): boolean {
@@ -294,9 +309,11 @@ export class GameSession {
       this.log.push('最深部の階段を降りた。ダンジョン踏破！');
       return { consumedTurn: false };
     }
+    const prevTheme = this.state.theme.id;
     this.state.floor++;
     this.floors.build(this.state, this.rng);
     this.log.push(`${this.state.floor}F に降りた。`);
+    if (this.state.theme.id !== prevTheme) this.log.push(`ここは「${this.state.theme.name}」。${this.state.theme.description}`);
     return { consumedTurn: false };
   }
 
@@ -372,11 +389,12 @@ export class GameSession {
     p.inventory.remove(item);
     this.log.push(`${item.displayName}を投げた！`);
 
+    // 水や空の上は飛び越えられる。岩壁と相手に当たると止まる
     let last = p.pos;
     let hit: Actor | undefined;
     for (let i = 0; i < 10; i++) {
       const next = addVec(last, DIR_VEC[p.facing]);
-      if (!this.state.map.isWalkable(next)) break;
+      if (!this.state.map.passesProjectile(next)) break;
       hit = this.state.actorAt(next);
       if (hit) break;
       last = next;
@@ -384,6 +402,11 @@ export class GameSession {
     if (hit) {
       const dmg = item.def.throwDamage ?? (item.def.atk ? item.def.atk + item.plus : 2);
       this.actions.dealDamage(p, hit, dmg);
+    }
+    if (!this.state.map.isWalkable(last)) {
+      const where = this.state.map.get(last) === TileType.Water ? '水に落ちて沈んだ' : '空の彼方へ落ちていった';
+      this.log.push(`${item.displayName}は${where}…`);
+      return { consumedTurn: true };
     }
     if (item.isPot) {
       this.log.push('壺が割れた！');

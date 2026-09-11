@@ -54,6 +54,10 @@ export class ActionExecutor {
       this.shops.becomeThief(this.state);
       return;
     }
+    if (target instanceof Monster && target.asleep) {
+      target.asleep = false;
+      this.log.push(`${target.name}は目を覚ました！`);
+    }
     const dealt = target.takeDamage(amount);
     const who = source ? `${source.name}は` : '';
     this.log.push(`${who}${target.name}に${dealt}のダメージ！`);

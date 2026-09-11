@@ -68,11 +68,11 @@ export function breathTarget<T extends Actor>(
     let p = user.pos;
     let clear = true;
     for (let i = 0; i < dist; i++) {
-      if (!state.map.canStep(p, dir)) {
+      p = addVec(p, DIR_VEC[dir]);
+      if (!state.map.passesProjectile(p)) {
         clear = false;
         break;
       }
-      p = addVec(p, DIR_VEC[dir]);
     }
     if (clear) return t;
   }

@@ -120,7 +120,7 @@ export class EffectResolver {
     let p = from;
     for (let i = 0; i < maxRange; i++) {
       const next = addVec(p, DIR_VEC[dir]);
-      if (!this.state.map.isWalkable(next)) return undefined;
+      if (!this.state.map.passesProjectile(next)) return undefined;
       const a = this.state.actorAt(next);
       if (a) return a;
       p = next;

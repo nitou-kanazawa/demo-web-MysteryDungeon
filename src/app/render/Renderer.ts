@@ -44,7 +44,8 @@ export class Renderer {
     g.fillStyle = '#07060a';
     g.fillRect(0, 0, this.width, this.height);
 
-    g.drawImage(this.tiles.render(state.map, state.shop?.room), ox, oy);
+    const frame: 0 | 1 = Math.floor(t / 700) % 2 === 0 ? 0 : 1;
+    g.drawImage(this.tiles.render(state.map, state.theme.id, state.shop?.room, frame), ox, oy);
 
     for (const [key, item] of state.groundItems) {
       const [xs, ys] = key.split(',');

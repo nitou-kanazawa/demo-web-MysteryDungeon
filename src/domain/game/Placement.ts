@@ -1,5 +1,6 @@
 import { DIRECTIONS, DIR_VEC, addVec, type Vec2 } from '../core/Vec2';
 import type { GameState } from './GameState';
+import { TileType } from '../map/Tile';
 
 /** origin から近い順に、アクターがいない歩行可能マスを探す（最大距離 radius） */
 export function findFreeTileNear(state: GameState, origin: Vec2, radius = 4): Vec2 | undefined {
@@ -18,7 +19,7 @@ export function findFreeTileNear(state: GameState, origin: Vec2, radius = 4): Ve
 
 /** origin から近い順に、アイテムが置かれていない歩行可能マスを探す */
 export function findItemDropTile(state: GameState, origin: Vec2, radius = 3): Vec2 | undefined {
-  const ok = (p: Vec2): boolean => state.map.isWalkable(p) && !state.itemAt(p) && state.map.get(p) !== 3;
+  const ok = (p: Vec2): boolean => state.map.isWalkable(p) && !state.itemAt(p) && state.map.get(p) !== TileType.Stairs;
   if (ok(origin)) return origin;
   for (let r = 1; r <= radius; r++) {
     for (const d of DIRECTIONS) {

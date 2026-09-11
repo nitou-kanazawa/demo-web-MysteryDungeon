@@ -19,13 +19,14 @@ export class Lighting {
     const og = ov.getContext('2d');
     if (!og) return;
 
+    const profile = state.theme.lighting;
     og.globalCompositeOperation = 'source-over';
-    og.fillStyle = 'rgb(3,2,8)';
+    og.fillStyle = state.theme.id === 'sky' ? 'rgb(12,18,40)' : state.theme.id === 'water' ? 'rgb(2,6,18)' : 'rgb(3,2,8)';
     og.fillRect(0, 0, w, h);
 
     // 探索済み: 記憶の薄明かり
     og.globalCompositeOperation = 'destination-out';
-    og.fillStyle = 'rgba(0,0,0,0.22)';
+    og.fillStyle = `rgba(0,0,0,${profile.explored})`;
     for (let y = 0; y < map.height; y++) {
       for (let x = 0; x < map.width; x++) {
         const p = { x, y };
@@ -42,13 +43,13 @@ export class Lighting {
       }
     }
     og.clip();
-    og.fillStyle = 'rgba(0,0,0,0.5)';
+    og.fillStyle = `rgba(0,0,0,${profile.visible})`;
     og.fillRect(0, 0, w, h);
 
     const flicker = 1 + Math.sin(t / 90) * 0.035 + Math.sin(t / 37) * 0.02;
     const cx = (player.pos.x + 0.5) * TILE;
     const cy = (player.pos.y + 0.5) * TILE;
-    const radius = TILE * 7 * flicker;
+    const radius = TILE * profile.torchRadius * flicker;
     const torch = og.createRadialGradient(cx, cy, TILE * 0.5, cx, cy, radius);
     torch.addColorStop(0, 'rgba(0,0,0,1)');
     torch.addColorStop(0.45, 'rgba(0,0,0,0.85)');
@@ -80,8 +81,9 @@ export class Lighting {
     g.clip();
     g.globalCompositeOperation = 'soft-light';
     const warm = g.createRadialGradient(ox + cx, oy + cy, 0, ox + cx, oy + cy, radius);
-    warm.addColorStop(0, 'rgba(255,170,70,0.9)');
-    warm.addColorStop(0.6, 'rgba(255,140,50,0.45)');
+    const k = profile.warm;
+    warm.addColorStop(0, `rgba(255,170,70,${0.9 * k})`);
+    warm.addColorStop(0.6, `rgba(255,140,50,${0.45 * k})`);
     warm.addColorStop(1, 'rgba(60,40,120,0)');
     g.fillStyle = warm;
     g.fillRect(ox + cx - radius, oy + cy - radius, radius * 2, radius * 2);

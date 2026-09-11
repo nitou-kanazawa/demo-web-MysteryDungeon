@@ -111,6 +111,7 @@ export class SpriteArt {
     }
     if (a.hasStatus('paralysis')) this.drawStatusMark(g, px, py, '縛', '#c084fc');
     else if (a.hasStatus('confusion')) this.drawStatusMark(g, px, py, '？', '#facc15');
+    else if ((a as { asleep?: boolean }).asleep) this.drawStatusMark(g, px, py, Math.floor(t / 500) % 2 === 0 ? 'z' : 'Z', '#93c5fd');
   }
 
   /** 拠点画面などで任意の位置・倍率で主人公を描く（x0, y0 は左上、scale はピクセル倍率） */

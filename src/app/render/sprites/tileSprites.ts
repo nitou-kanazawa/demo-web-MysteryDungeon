@@ -81,3 +81,89 @@ export const TILE_SPRITES = {
   corridor: earth(),
   stairs: stairs(),
 } as const;
+
+// ---------------------------------------------------------------- テーマ別タイル
+
+/** 水（2 フレーム。波の位置をずらす） */
+function water(frame: 0 | 1): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'w');
+  const off = frame === 0 ? 0 : 4;
+  for (let y = 3; y < 32; y += 8) {
+    c.line((off + 2) % 32, y, (off + 9) % 32, y, 'l');
+    c.line((off + 18) % 32, y + 4, (off + 26) % 32, y + 4, 'l');
+    c.stamp((off + 13) % 32, y + 1, ['d']);
+  }
+  c.stamp(6, 14, ['h']).stamp(24, 26, ['h']);
+  return c.toSprite({ w: '#1d4e89', l: '#3b82c4', d: '#173f70', h: '#7cc4ff' });
+}
+
+/** 空（雲と青）。frame で雲を少しずらす */
+function sky(frame: 0 | 1): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 's');
+  const off = frame === 0 ? 0 : 1;
+  c.ellipse(9 + off, 9, 6, 3, 'c').ellipse(14 + off, 8, 4, 3, 'c');
+  c.ellipse(23 + off, 22, 6, 3, 'c').ellipse(19 + off, 24, 4, 2, 'c');
+  c.ellipse(9 + off, 11, 6, 2, 'e');
+  c.ellipse(23 + off, 24, 6, 2, 'e');
+  return c.toSprite({ s: '#7fb4e6', c: '#f4f8ff', e: '#d6e4f5' });
+}
+
+/** 砂の島（地底湖の床） */
+function sand(variant: 0 | 1): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'a');
+  if (variant === 0) c.stamp(5, 6, ['d', '.d']).stamp(20, 20, ['dd']).stamp(12, 26, ['d']);
+  else c.stamp(24, 5, ['dd']).stamp(8, 17, ['d', 'd']).stamp(18, 12, ['.d', 'd']);
+  c.stamp(27, 27, ['p']).stamp(3, 12, ['p']);
+  return c.toSprite({ a: '#c9b27c', d: '#a8925f', p: '#e6d3a0' });
+}
+
+/** 草の島（天空の床） */
+function grass(variant: 0 | 1): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'g');
+  const tufts = variant === 0 ? [[4, 6], [18, 12], [9, 24], [26, 27]] : [[12, 4], [24, 9], [5, 18], [17, 26]];
+  for (const [x, y] of tufts) c.stamp(x!, y!, ['.t.t', 'tttt']);
+  c.stamp(28, 3, ['f']).stamp(2, 28, ['f']);
+  return c.toSprite({ g: '#4f9a4a', t: '#3b7d38', f: '#f7d774' });
+}
+
+/** 木の橋（水上の通路） */
+function bridge(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'p');
+  for (let y = 0; y < 32; y += 4) c.rect(0, y, 32, 1, 'm');
+  c.rect(0, 0, 3, 32, 'r').rect(29, 0, 3, 32, 'r');
+  c.stamp(10, 6, ['n']).stamp(22, 18, ['n']).stamp(14, 26, ['n']);
+  return c.toSprite({ p: '#a0713d', m: '#6b4520', r: '#5b3a1a', n: '#3d2812' });
+}
+
+/** 石の空中回廊（天空の通路） */
+function walkway(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 's');
+  c.rect(0, 0, 32, 1, 'm').rect(0, 0, 1, 32, 'm').rect(0, 16, 32, 1, 'm').rect(16, 0, 1, 16, 'm');
+  c.rect(0, 0, 2, 32, 'e').rect(30, 0, 2, 32, 'e');
+  c.stamp(8, 8, ['d']).stamp(22, 24, ['d']);
+  return c.toSprite({ s: '#9a9aa8', m: '#5c5c6a', e: '#c2c2cc', d: '#7a7a88' });
+}
+
+/** 岸辺の縁（水に接した床の辺に重ねる） */
+function shoreEdge(): PixelSprite {
+  const c = new PixelCanvas();
+  c.rect(0, 30, 32, 2, 'f');
+  c.stamp(3, 29, ['f']).stamp(13, 29, ['ff']).stamp(24, 29, ['f']);
+  return c.toSprite({ f: '#bfe3ff' });
+}
+
+/** 崖の面（空に接した床の下に重ねる） */
+function cliffFace(): PixelSprite {
+  const c = new PixelCanvas();
+  c.rect(0, 0, 32, 10, 'r');
+  c.rect(0, 0, 32, 1, 'h');
+  c.rect(0, 9, 32, 1, 'd');
+  c.stamp(4, 3, ['dd', '.d']).stamp(18, 4, ['d', 'dd']).stamp(26, 2, ['d']);
+  c.rect(0, 10, 32, 3, 'k');
+  return c.toSprite({ r: '#6b5a48', h: '#8a7a64', d: '#4a3d30', k: '#3a2f24' });
+}
+
+export const THEME_TILES = {
+  water: { solid: [water(0), water(1)], floor: [sand(0), sand(1)], corridor: bridge(), edge: shoreEdge() },
+  sky: { solid: [sky(0), sky(1)], floor: [grass(0), grass(1)], corridor: walkway(), edge: cliffFace() },
+} as const;

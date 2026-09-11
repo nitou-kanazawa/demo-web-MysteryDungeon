@@ -48,9 +48,9 @@ interface Sector {
 export class DungeonGenerator {
   constructor(private readonly config: GeneratorConfig = DEFAULT_GENERATOR_CONFIG) {}
 
-  generate(rng: IRng): DungeonMap {
-    const { width, height, cols, rows } = this.config;
-    const map = new DungeonMap(width, height);
+  generate(rng: IRng, solid: TileType = TileType.Wall): DungeonMap {
+    const { width, height } = this.config;
+    const map = new DungeonMap(width, height, solid);
     const sectors = this.createSectors(rng);
 
     for (const s of sectors) {
@@ -161,7 +161,7 @@ export class DungeonGenerator {
   }
 
   private carveTile(map: DungeonMap, p: Vec2): void {
-    if (map.get(p) === TileType.Wall) map.set(p, TileType.Corridor);
+    if (map.get(p) === map.solid) map.set(p, TileType.Corridor);
   }
 
   private randomTileIn(room: Room, rng: IRng): Vec2 {

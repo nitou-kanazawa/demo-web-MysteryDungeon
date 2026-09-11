@@ -16,6 +16,7 @@ import { adjacentAttackDir, breathTarget, canNotice, confusedAction, nearest, ra
  */
 export class MonsterAI {
   decide(monster: Monster, state: GameState, rng: IRng): AiAction {
+    if (monster.asleep) return { type: 'wait' };
     if (monster.hasStatus('confusion')) return confusedAction(state, monster, rng);
 
     const skills = monster.skills.filter((s) => monster.isSkillReady(s.id));

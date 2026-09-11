@@ -20,7 +20,12 @@ export class HudRenderer {
     g.fillStyle = '#f5deb3';
     const y = HUD_HEIGHT / 2;
     g.fillText(`${session.state.floor}F`, 14, y);
-    g.fillText(`Lv ${p.level}`, 64, y);
+    g.font = `12px ${FONT}`;
+    g.fillStyle = '#9c8f78';
+    g.fillText(session.state.theme.name, 14, y + 14);
+    g.font = `bold 15px ${FONT}`;
+    g.fillStyle = '#f5deb3';
+    g.fillText(`Lv ${p.level}`, 64, y - 2);
 
     // HP バー
     g.fillText('HP', 130, y);
