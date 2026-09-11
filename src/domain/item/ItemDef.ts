@@ -26,7 +26,9 @@ export type ItemEffect =
   | { readonly kind: 'boltParalyze'; readonly turns: number }
   | { readonly kind: 'boltKnockback' }
   | { readonly kind: 'boltDamage'; readonly amount: number }
-  | { readonly kind: 'escape' };
+  | { readonly kind: 'escape' }
+  | { readonly kind: 'revealTraps' }
+  | { readonly kind: 'boltTrap' };
 
 export interface ItemDef {
   readonly id: string;

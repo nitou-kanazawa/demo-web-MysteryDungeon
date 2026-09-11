@@ -21,6 +21,8 @@ export const ITEM_SPAWN_TABLE: readonly ItemSpawnEntry[] = [
   { defId: 'scroll_warp', weight: 4, minFloor: 1, maxFloor: 10 },
   { defId: 'scroll_confuse', weight: 4, minFloor: 2, maxFloor: 10 },
   { defId: 'scroll_escape', weight: 3, minFloor: 1, maxFloor: 10 },
+  { defId: 'scroll_search', weight: 4, minFloor: 2, maxFloor: 10 },
+  { defId: 'staff_trap', weight: 2, minFloor: 3, maxFloor: 10 },
   { defId: 'staff_paralyze', weight: 3, minFloor: 2, maxFloor: 10 },
   { defId: 'staff_blow', weight: 3, minFloor: 2, maxFloor: 10 },
   { defId: 'staff_thunder', weight: 2, minFloor: 4, maxFloor: 10 },
@@ -54,6 +56,12 @@ export interface FloorConfig {
   readonly monsterHouseChance: number;
   /** モンスターハウスが出る最初の階 */
   readonly monsterHouseMinFloor: number;
+  /** 罠の数（2F 以降） */
+  readonly trapsPerFloor: readonly [number, number];
+  /** 鍛冶屋が現れる確率（2F 以降） */
+  readonly blacksmithChance: number;
+  /** 番人が階段の部屋に現れる確率（4F 以降） */
+  readonly guardianChance: number;
 }
 
 export const DEFAULT_FLOOR_CONFIG: FloorConfig = {
@@ -68,4 +76,7 @@ export const DEFAULT_FLOOR_CONFIG: FloorConfig = {
   shopItems: [3, 6],
   monsterHouseChance: 0.2,
   monsterHouseMinFloor: 3,
+  trapsPerFloor: [2, 5],
+  blacksmithChance: 0.25,
+  guardianChance: 0.25,
 };

@@ -24,10 +24,12 @@ export const ITEM_DEFS: readonly ItemDef[] = [
   { id: 'scroll_light', name: 'あかりの巻物', category: 'scroll', price: 200, effect: { kind: 'revealMap' }, description: 'フロアの地形がすべて分かる。' },
   { id: 'scroll_warp', name: 'ワープの巻物', category: 'scroll', price: 250, effect: { kind: 'teleport' }, description: 'フロアのどこかへ瞬間移動する。' },
   { id: 'scroll_escape', name: 'リレミトの巻物', category: 'scroll', price: 350, effect: { kind: 'escape' }, description: 'ダンジョンから脱出して拠点に帰る。' },
+  { id: 'scroll_search', name: '罠見破りの巻物', category: 'scroll', price: 250, effect: { kind: 'revealTraps' }, description: 'このフロアの罠がすべて見えるようになる。' },
   { id: 'scroll_confuse', name: '混乱の巻物', category: 'scroll', price: 300, effect: { kind: 'confuseVisible', turns: 10 }, description: '視界内の敵を混乱させる。' },
   // 杖
   { id: 'staff_paralyze', name: 'かなしばりの杖', category: 'staff', price: 600, charges: 5, effect: { kind: 'boltParalyze', turns: 8 }, description: '魔法弾が当たった相手を動けなくする。' },
   { id: 'staff_blow', name: 'ふきとばしの杖', category: 'staff', price: 500, charges: 5, effect: { kind: 'boltKnockback' }, description: '魔法弾が当たった相手を壁まで吹き飛ばす。' },
+  { id: 'staff_trap', name: 'トラップの杖', category: 'staff', price: 700, charges: 4, effect: { kind: 'boltTrap' }, description: '魔法弾が当たった相手の足元に罠を仕掛けて発動させる。' },
   { id: 'staff_thunder', name: 'いかずちの杖', category: 'staff', price: 900, charges: 4, effect: { kind: 'boltDamage', amount: 25 }, description: '雷の魔法弾で25ダメージを与える。' },
   // 壺
   { id: 'pot_storage', name: '保存の壺', category: 'pot', price: 500, potKind: 'storage', capacity: 4, description: 'アイテムを入れて持ち運べる。中身はいつでも出せる。' },

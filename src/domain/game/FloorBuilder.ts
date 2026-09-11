@@ -11,6 +11,10 @@ import type { GameState } from './GameState';
 import { findFreeTileNear } from './Placement';
 import type { ShopService } from './ShopService';
 import { themeForFloor } from '../data/themes';
+import { Npc } from '../entity/Npc';
+import { BLACKSMITH_DEF } from '../data/npcs';
+import { TRAP_KINDS } from './TileFeature';
+import { findItemDropTile } from './Placement';
 import type { Room } from '../map/Room';
 
 /** フロアの生成と初期配置（プレイヤー・仲間・敵・アイテム） */
@@ -57,7 +61,66 @@ export class FloorBuilder {
     const [iMin, iMax] = this.config.itemsPerFloor;
     for (let i = 0; i < rng.int(iMin, iMax); i++) this.spawnItem(state, rng);
 
+    if (state.floor >= 2) this.placeTraps(state, rng, startRoom);
+    if (state.floor >= 2 && rng.chance(this.config.blacksmithChance)) this.placeBlacksmith(state, rng, startRoom);
+    if (state.floor >= 4 && stairsRoom && stairsRoom !== startRoom && rng.chance(this.config.guardianChance)) {
+      this.placeGuardian(state, rng, stairsRoom);
+    }
+
     state.visibility.update(state.player.pos);
+  }
+
+  /** 隠し罠を部屋の床に置く（開始部屋は避ける） */
+  private placeTraps(state: GameState, rng: IRng, startRoom: Room): void {
+    const [lo, hi] = this.config.trapsPerFloor;
+    const n = rng.int(lo, hi);
+    const rooms = state.map.rooms.filter((r) => r !== startRoom && r !== state.shop?.room);
+    for (let i = 0; i < n && rooms.length > 0; i++) {
+      const room = rng.pick(rooms);
+      const tiles = [...room.tiles()].filter(
+        (t) => state.map.get(t) === TileType.Floor && !state.itemAt(t) && !state.featureAt(t) && !state.isOccupied(t),
+      );
+      if (tiles.length === 0) continue;
+      state.placeFeature(rng.pick(tiles), { kind: 'trap', trap: rng.pick(TRAP_KINDS), hidden: true });
+    }
+  }
+
+  private placeBlacksmith(state: GameState, rng: IRng, startRoom: Room): void {
+    const rooms = state.map.rooms.filter((r) => r !== startRoom && r !== state.shop?.room && r !== state.monsterHouse?.room);
+    if (rooms.length === 0) return;
+    const room = rng.pick(rooms);
+    const tiles = [...room.tiles()].filter((t) => !state.isOccupied(t) && !state.featureAt(t) && state.map.get(t) === TileType.Floor);
+    if (tiles.length === 0) return;
+    state.npcs.push(new Npc(this.ids.generate(), 'blacksmith', BLACKSMITH_DEF, rng.pick(tiles)));
+  }
+
+  /** 番人: 2 階上までの最強種族を HP2倍で階段の部屋に眠らせる */
+  private placeGuardian(state: GameState, rng: IRng, stairsRoom: Room): void {
+    const candidates = this.monsterDefs.filter((d) => state.floor + 2 >= d.minFloor && d.minFloor > 0);
+    const first = candidates[0];
+    if (!first) return;
+    const def = candidates.reduce((best, d) => (d.rank > best.rank ? d : best), first);
+    const p = findFreeTileNear(state, state.map.stairs, 2);
+    if (!p) return;
+    const m = new Monster(this.ids.generate(), def, p).makeGuardian();
+    state.monsters.push(m);
+  }
+
+  /** 番人撃破時のドロップ（出現テーブルから 1 つ） */
+  dropGuardianReward(state: GameState, rng: IRng, at: Vec2): void {
+    const entry = this.pickWeighted(Math.min(10, state.floor + 3), rng);
+    if (!entry || entry.defId === 'gold') return;
+    const tile = findItemDropTile(state, at);
+    if (tile) state.placeItem(tile, this.factory.create(entry.defId, rng));
+  }
+
+  /** 指定位置に階層相応の敵を 1 体（召喚の罠など） */
+  spawnMonsterAt(state: GameState, rng: IRng, p: Vec2): Monster | undefined {
+    const candidates = this.monsterDefs.filter((d) => state.floor >= d.minFloor && state.floor <= d.maxFloor);
+    if (candidates.length === 0 || state.isOccupied(p)) return undefined;
+    const m = new Monster(this.ids.generate(), rng.pick(candidates), p);
+    state.monsters.push(m);
+    return m;
   }
 
   /** モンスターハウス: 部屋いっぱいの眠った敵とアイテム */

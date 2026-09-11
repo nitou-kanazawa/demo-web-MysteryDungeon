@@ -11,6 +11,7 @@ import type { GameState } from './GameState';
 import type { MessageLog } from './MessageLog';
 import { findFreeTileNear } from './Placement';
 import { Shopkeeper } from '../entity/Shopkeeper';
+import { Npc } from '../entity/Npc';
 import type { ShopService } from './ShopService';
 
 /**
@@ -25,7 +26,13 @@ export class ActionExecutor {
     private readonly ids: IdGenerator,
     private readonly config: FloorConfig,
     private readonly shops: ShopService,
+    /** 番人撃破時のドロップなど、フロア生成器に頼む処理 */
+    private onGuardianKilled: ((victim: Monster) => void) | undefined = undefined,
   ) {}
+
+  setGuardianHandler(handler: (victim: Monster) => void): void {
+    this.onGuardianKilled = handler;
+  }
 
   /** dir へ 1 マス移動。地形・アクターに阻まれれば false */
   move(actor: Actor, dir: Direction): boolean {
@@ -54,6 +61,12 @@ export class ActionExecutor {
       this.shops.becomeThief(this.state);
       return;
     }
+    if (target instanceof Npc) {
+      target.takeDamage(amount);
+      this.log.push(`${target.name}に${amount}のダメージ！`);
+      this.angerNpc(target);
+      return;
+    }
     if (target instanceof Monster && target.asleep) {
       target.asleep = false;
       this.log.push(`${target.name}は目を覚ました！`);
@@ -78,16 +91,31 @@ export class ActionExecutor {
       this.state.status = 'dead';
       return;
     }
-    this.log.push(`${victim.name}を倒した！`);
+    this.log.push(`${victim instanceof Monster ? victim.displayName : victim.name}を倒した！`);
     if (victim instanceof Monster) {
       this.grantExp(killer, victim);
-      if (killer instanceof Player) this.tryRecruit(victim);
+      if (victim.guardian) {
+        this.log.push('番人を倒した！ 何かを落としたようだ。');
+        this.onGuardianKilled?.(victim);
+      } else if (killer instanceof Player) {
+        this.tryRecruit(victim);
+      }
     }
     this.state.removeDeadMonsters();
   }
 
+  /** 中立 NPC を怒らせて敵にする */
+  angerNpc(npc: Npc): void {
+    this.state.npcs = this.state.npcs.filter((n) => n !== npc);
+    const m = new Monster(this.ids.generate(), npc.definition, npc.pos);
+    m.hp = npc.hp;
+    m.lastSeenPlayerPos = this.state.player.pos;
+    this.state.monsters.push(m);
+    this.log.push(`${npc.name}は怒って襲いかかってきた！`);
+  }
+
   private grantExp(killer: Actor | undefined, victim: Monster): void {
-    const exp = victim.definition.exp;
+    const exp = victim.definition.exp * (victim.guardian ? 2 : 1);
     if (killer instanceof Player) {
       const ups = killer.gainExp(exp);
       if (ups > 0) this.log.push(`${killer.name}はレベル${killer.level}に上がった！`);

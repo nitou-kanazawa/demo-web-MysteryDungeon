@@ -32,6 +32,11 @@ import { Ally } from '../entity/Ally';
 import type { AllySnapshot } from '../entity/AllySnapshot';
 import { MONSTER_MAP } from '../data/monsters';
 import { TACTIC_LABEL } from './Tactic';
+import { FeatureService } from './FeatureService';
+import { SmithService } from './SmithService';
+import { Shopkeeper } from '../entity/Shopkeeper';
+import { Npc } from '../entity/Npc';
+import { chebyshev } from '../core/Vec2';
 import type { ItemSnapshot } from '../item/ItemSnapshot';
 
 export interface SessionOptions {
@@ -60,6 +65,8 @@ export class GameSession {
   readonly recipes: RecipeBook;
   readonly pots: PotService;
   readonly shops: ShopService;
+  readonly features: FeatureService;
+  readonly smith: SmithService;
   readonly history: Command[] = [];
   private readonly startingInventory: readonly ItemSnapshot[];
   private readonly startingGold: number;
@@ -109,6 +116,18 @@ export class GameSession {
     this.actions = new ActionExecutor(this.state, this.rng, this.log, this.ids, this.config, this.shops);
     this.effects = new EffectResolver(this.state, this.rng, this.log, this.actions);
     this.skills = new SkillExecutor(this.state, this.rng, this.log, this.actions);
+    this.smith = new SmithService(this.log);
+    this.features = new FeatureService(this.state, this.rng, this.log, this.actions, this.ids, this.floors, {
+      fallToNextFloor: () => this.fallToNextFloor(),
+      teleportPlayer: () => {
+        this.effects.applySelf({ kind: 'teleport' });
+      },
+    });
+    this.effects.setHooks({
+      revealTraps: () => this.features.revealAllTraps(),
+      plantTrapOn: (target) => this.features.plantAndTrigger(target),
+    });
+    this.actions.setGuardianHandler((victim) => this.floors.dropGuardianReward(this.state, this.rng, victim.pos));
 
     this.floors.build(this.state, this.rng);
     this.log.push(`ダンジョン ${this.state.floor}F。最深部 ${this.config.maxFloor}F の階段を目指せ！`);
@@ -231,8 +250,15 @@ export class GameSession {
     const other = this.state.actorAt(to);
     if (other) {
       if (other.faction === 'neutral') {
-        const r = this.shops.talk(this.state);
-        return { consumedTurn: true, message: r.message };
+        if (other instanceof Shopkeeper) {
+          const r = this.shops.talk(this.state);
+          return { consumedTurn: true, message: r.message };
+        }
+        if (other instanceof Npc && other.role === 'blacksmith') {
+          this.smith.talk(p);
+          return { consumedTurn: true };
+        }
+        return { consumedTurn: true, message: `${other.name}は何も言わない。` };
       }
       if (other.faction === 'enemy' || p.hasStatus('confusion')) {
         this.actions.attack(p, other);
@@ -255,9 +281,37 @@ export class GameSession {
     const p = this.state.player;
     this.shops.onPlayerMoved(this.state, from);
     this.checkMonsterHouse();
+    this.features.onEntered(p, p.pos);
+    if (this.state.status !== 'playing') return;
+    this.wakeGuardianIfAdjacent();
     const item = this.state.itemAt(p.pos);
     if (item) this.pickupAt(p.pos, item);
     if (this.state.map.get(p.pos) === TileType.Stairs) this.log.push('階段がある。（Enterで降りる）');
+  }
+
+  /** 番人はプレイヤーが隣接すると目を覚ます */
+  private wakeGuardianIfAdjacent(): void {
+    for (const m of this.state.monsters) {
+      if (m.guardian && m.asleep && chebyshev(m.pos, this.state.player.pos) <= 1) {
+        m.asleep = false;
+        m.lastSeenPlayerPos = this.state.player.pos;
+        this.log.push(`${m.displayName}が目を覚ました！`);
+      }
+    }
+  }
+
+  /** 落とし穴: 次の階へ落ちる（最深部なら踏破にはならず同じ階に留まる） */
+  private fallToNextFloor(): void {
+    if (this.state.floor >= this.config.maxFloor) {
+      this.log.push('しかし底が浅く、落ちなかった。');
+      return;
+    }
+    this.shops.settleOnLeave(this.state);
+    const prevTheme = this.state.theme.id;
+    this.state.floor++;
+    this.floors.build(this.state, this.rng);
+    this.log.push(`${this.state.floor}F に落ちた！`);
+    if (this.state.theme.id !== prevTheme) this.log.push(`ここは「${this.state.theme.name}」。${this.state.theme.description}`);
   }
 
   /** モンスターハウスに足を踏み入れたら中の敵を起こす */

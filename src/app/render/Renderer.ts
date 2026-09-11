@@ -8,6 +8,8 @@ import { SpriteArt } from './SpriteArt';
 import { TileArt } from './TileArt';
 import { CodexRenderer } from './CodexRenderer';
 import { Ally } from '../../domain/entity/Ally';
+import { featureSprite } from './sprites/featureSprites';
+import { paintSprite } from './sprites/PixelSprite';
 import { FONT } from './RenderConfig';
 
 /** 各レイヤーを合成して 1 フレームを描く */
@@ -46,6 +48,17 @@ export class Renderer {
 
     const frame: 0 | 1 = Math.floor(t / 700) % 2 === 0 ? 0 : 1;
     g.drawImage(this.tiles.render(state.map, state.theme.id, state.shop?.room, frame), ox, oy);
+
+    g.imageSmoothingEnabled = false;
+    for (const [key, f] of state.allFeatures) {
+      const sprite = featureSprite(f);
+      if (!sprite) continue;
+      const [xs, ys] = key.split(',');
+      const x = Number(xs);
+      const y = Number(ys);
+      if (!state.visibility.isExplored({ x, y })) continue;
+      paintSprite(g, sprite, ox + x * TILE, oy + y * TILE, TILE / 32);
+    }
 
     for (const [key, item] of state.groundItems) {
       const [xs, ys] = key.split(',');

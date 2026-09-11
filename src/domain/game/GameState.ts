@@ -17,6 +17,8 @@ export interface MonsterHouseState {
   triggered: boolean;
 }
 import type { Shopkeeper } from '../entity/Shopkeeper';
+import type { Npc } from '../entity/Npc';
+import type { TileFeature } from './TileFeature';
 
 /** フロアの店。keeper が undefined なら店主は敵化済み */
 export interface ShopState {
@@ -37,6 +39,9 @@ export class GameState {
   allies: Ally[] = [];
   shop: ShopState | undefined;
   monsterHouse: MonsterHouseState | undefined;
+  /** 店主以外の中立 NPC（鍛冶屋など） */
+  npcs: Npc[] = [];
+  private readonly features = new Map<string, TileFeature>();
   theme: ThemeDef = themeForFloor(1);
   /** 仲間への作戦 */
   tactic: Tactic = 'aggressive';
@@ -56,18 +61,24 @@ export class GameState {
     this.monsters = [];
     this.shop = undefined;
     this.monsterHouse = undefined;
+    this.npcs = [];
+    this.features.clear();
     this.ground.clear();
   }
 
   get actors(): Actor[] {
     const keeper = this.shop?.keeper;
-    return keeper ? [this.player, ...this.allies, ...this.monsters, keeper] : [this.player, ...this.allies, ...this.monsters];
+    const base: Actor[] = [this.player, ...this.allies, ...this.monsters, ...this.npcs];
+    if (keeper) base.push(keeper);
+    return base;
   }
 
   actorAt(p: Vec2): Actor | undefined {
     if (this.player.isAlive && this.player.pos.x === p.x && this.player.pos.y === p.y) return this.player;
     const keeper = this.shop?.keeper;
     if (keeper && keeper.isAlive && keeper.pos.x === p.x && keeper.pos.y === p.y) return keeper;
+    const npc = this.npcs.find((n) => n.isAlive && n.pos.x === p.x && n.pos.y === p.y);
+    if (npc) return npc;
     return (
       this.allies.find((a) => a.isAlive && a.pos.x === p.x && a.pos.y === p.y) ??
       this.monsters.find((m) => m.isAlive && m.pos.x === p.x && m.pos.y === p.y)
@@ -97,8 +108,25 @@ export class GameState {
     return this.ground.entries();
   }
 
+  featureAt(p: Vec2): TileFeature | undefined {
+    return this.features.get(keyOf(p));
+  }
+
+  placeFeature(p: Vec2, f: TileFeature): void {
+    this.features.set(keyOf(p), f);
+  }
+
+  removeFeatureAt(p: Vec2): void {
+    this.features.delete(keyOf(p));
+  }
+
+  get allFeatures(): IterableIterator<[string, TileFeature]> {
+    return this.features.entries();
+  }
+
   removeDeadMonsters(): void {
     this.monsters = this.monsters.filter((m) => m.isAlive);
     this.allies = this.allies.filter((a) => a.isAlive);
+    this.npcs = this.npcs.filter((n) => n.isAlive);
   }
 }

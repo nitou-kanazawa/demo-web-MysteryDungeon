@@ -8,6 +8,8 @@ import { itemSprite } from './sprites/itemSprites';
 import { MONSTER_GIRL_SPRITES } from './sprites/monsterGirlSprites';
 import { MONSTER_SPRITES } from './sprites/monsterSprites';
 import { SpriteCache, spriteHeight, spriteWidth, type PixelSprite } from './sprites/PixelSprite';
+import { BLACKSMITH_SPRITE } from './sprites/featureSprites';
+import { Monster } from '../../domain/entity/Monster';
 
 /** 種族の見た目を引くための最小情報（Actor でも MonsterDef でもよい） */
 export interface CreatureLook {
@@ -74,10 +76,19 @@ export class SpriteArt {
       this.drawSprite(g, 'hero', HERO_SPRITE, cx, cy - 1 + bob, TILE / 32);
     } else {
       const defId = (a as { definition?: { id: string } }).definition?.id;
-      const sprite = defId ? this.spriteFor(defId) : undefined;
+      const guardian = a instanceof Monster && a.guardian;
+      const sprite = defId === 'blacksmith' ? BLACKSMITH_SPRITE : defId ? this.spriteFor(defId) : undefined;
       if (sprite && defId) {
         const squash = 1 + Math.sin(t / 280 + a.id) * 0.04;
-        this.drawSprite(g, this.spriteKey(defId), sprite, cx, cy - 1, TILE / 32, squash);
+        const scale = guardian ? (TILE / 32) * 1.3 : TILE / 32;
+        this.drawSprite(g, defId === 'blacksmith' ? 'npc:blacksmith' : this.spriteKey(defId), sprite, cx, cy - (guardian ? 5 : 1), scale, squash);
+        if (guardian) {
+          g.fillStyle = '#fbbf24';
+          g.font = `bold 10px ${FONT}`;
+          g.textAlign = 'center';
+          g.textBaseline = 'bottom';
+          g.fillText('番人', cx, py - 2);
+        }
       } else {
         this.drawFallback(g, { id: String(a.id), glyph: a.glyph, color: a.color }, cx, cy, TILE * 0.38);
       }
@@ -111,6 +122,7 @@ export class SpriteArt {
     }
     if (a.hasStatus('paralysis')) this.drawStatusMark(g, px, py, '縛', '#c084fc');
     else if (a.hasStatus('confusion')) this.drawStatusMark(g, px, py, '？', '#facc15');
+    else if (a.hasStatus('sleep')) this.drawStatusMark(g, px, py, '眠', '#93c5fd');
     else if ((a as { asleep?: boolean }).asleep) this.drawStatusMark(g, px, py, Math.floor(t / 500) % 2 === 0 ? 'z' : 'Z', '#93c5fd');
   }
 

@@ -49,6 +49,13 @@ export class DashRunner {
       this.stop();
       return false;
     }
+    const ahead = addVec(from, DIR_VEC[next]);
+    const feature = st.featureAt(ahead);
+    if (feature && !(feature.kind === 'trap' && feature.hidden)) {
+      // 見えている罠・跳ね床などの手前で止まる
+      this.stop();
+      return false;
+    }
     const logBefore = this.session.log.all.length;
     const hpBefore = st.player.hp;
     const tileBefore = st.map.get(from);

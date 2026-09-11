@@ -8,13 +8,24 @@ import type { MessageLog } from './MessageLog';
 import type { ActionExecutor } from './ActionExecutor';
 
 /** アイテム効果をゲーム状態に適用する */
+export interface EffectHooks {
+  readonly revealTraps: () => number;
+  readonly plantTrapOn: (target: Actor) => void;
+}
+
 export class EffectResolver {
+  private hooks: EffectHooks | undefined;
+
   constructor(
     private readonly state: GameState,
     private readonly rng: IRng,
     private readonly log: MessageLog,
     private readonly actions: ActionExecutor,
   ) {}
+
+  setHooks(hooks: EffectHooks): void {
+    this.hooks = hooks;
+  }
 
   /** プレイヤーが自分に使う効果（食料・草・種・巻物） */
   applySelf(effect: ItemEffect): boolean {
@@ -83,6 +94,11 @@ export class EffectResolver {
         this.state.status = 'escaped';
         this.log.push('リレミト！ 光に包まれてダンジョンから脱出した。');
         return true;
+      case 'revealTraps': {
+        const n = this.hooks?.revealTraps() ?? 0;
+        this.log.push(n > 0 ? `${n}個の罠が見えるようになった！` : 'このフロアに罠は無いようだ。');
+        return true;
+      }
       default:
         this.log.push('何も起こらなかった。');
         return false;
@@ -111,6 +127,9 @@ export class EffectResolver {
         this.actions.dealDamage(this.state.player, target, effect.amount);
         break;
       }
+      case 'boltTrap':
+        this.hooks?.plantTrapOn(target);
+        break;
       default:
         this.log.push('何も起こらなかった。');
     }

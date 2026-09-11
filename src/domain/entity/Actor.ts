@@ -93,6 +93,6 @@ export abstract class Actor {
 
   /** 行動可能か（かなしばり中は不可） */
   get canAct(): boolean {
-    return this.isAlive && !this.hasStatus('paralysis');
+    return this.isAlive && !this.hasStatus('paralysis') && !this.hasStatus('sleep');
   }
 }
