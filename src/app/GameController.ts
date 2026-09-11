@@ -3,6 +3,7 @@ import type { GameSession } from '../domain/game/GameSession';
 import { directionFromKey } from './input/KeyMap';
 import { handleCodexKey, newCodexView } from './ui/CodexView';
 import { TACTICS } from '../domain/game/Tactic';
+import { DashRunner } from '../domain/game/Dash';
 import { buildItemActions } from './ui/ItemActionMenu';
 import type { UiMode } from './ui/UiState';
 
@@ -15,7 +16,26 @@ export class GameController {
   /** 終了画面でキーが押された（拠点へ戻る） */
   exitRequested = false;
 
-  constructor(readonly session: GameSession) {}
+  private readonly dash: DashRunner;
+  private nextDashAt = 0;
+  /** ダッシュ 1 歩の間隔（ms） */
+  dashIntervalMs = 45;
+
+  constructor(readonly session: GameSession) {
+    this.dash = new DashRunner(session);
+  }
+
+  get isDashing(): boolean {
+    return this.dash.isRunning;
+  }
+
+  /** 描画ループから毎フレーム呼ぶ。ダッシュ中なら間隔ごとに 1 歩進める。状態が変わったら true */
+  tick(now: number): boolean {
+    if (!this.dash.isRunning || now < this.nextDashAt) return false;
+    this.nextDashAt = now + this.dashIntervalMs;
+    this.dash.step();
+    return true;
+  }
 
   exportReplay(): string {
     return JSON.stringify(this.session.toReplay());
@@ -31,6 +51,11 @@ export class GameController {
     const status = this.session.state.status;
     if (status !== 'playing') {
       this.exitRequested = true;
+      return true;
+    }
+    if (this.dash.isRunning) {
+      // ダッシュ中はどのキーでも中断
+      this.dash.stop();
       return true;
     }
     switch (this.mode.kind) {
@@ -58,6 +83,11 @@ export class GameController {
   private handleExplore(e: KeyboardEvent): boolean {
     const dir: Direction | undefined = directionFromKey(e.key, e.code);
     if (dir) {
+      if (e.shiftKey) {
+        this.dash.start(dir);
+        this.nextDashAt = 0;
+        return true;
+      }
       this.session.execute({ type: 'move', dir });
       return true;
     }
@@ -123,6 +153,11 @@ export class GameController {
       return true;
     }
     if (this.moveCursor(mode, e, items.length)) return true;
+    if (e.code === 'KeyR') {
+      this.session.execute({ type: 'sort' });
+      mode.cursor = 0;
+      return true;
+    }
     if (this.isConfirm(e) && items.length > 0) {
       this.mode = { kind: 'itemActions', itemIndex: mode.cursor, cursor: 0 };
       return true;

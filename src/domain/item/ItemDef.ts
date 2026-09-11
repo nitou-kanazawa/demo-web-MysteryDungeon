@@ -73,6 +73,9 @@ export const POT_KIND_LABEL: Readonly<Record<PotKind, string>> = {
   change: '変化の壺',
 };
 
+/** 整頓時の並び順 */
+export const CATEGORY_ORDER: readonly ItemCategory[] = ['weapon', 'shield', 'staff', 'pot', 'herb', 'seed', 'food', 'scroll', 'material', 'gold'];
+
 export const isEquipment = (def: ItemDef): boolean => def.category === 'weapon' || def.category === 'shield';
 export const isConsumable = (def: ItemDef): boolean =>
   def.category === 'food' || def.category === 'herb' || def.category === 'seed' || def.category === 'scroll';

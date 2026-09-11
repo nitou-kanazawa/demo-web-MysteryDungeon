@@ -13,7 +13,7 @@ import type { Actor } from '../entity/Actor';
 import { Player } from '../entity/Player';
 import { STATUS_LABEL } from '../entity/StatusEffect';
 import { ItemFactory } from '../item/ItemFactory';
-import { isConsumable, isEquipment } from '../item/ItemDef';
+import { CATEGORY_ORDER, isConsumable, isEquipment } from '../item/ItemDef';
 import type { ItemInstance } from '../item/ItemInstance';
 import { PotService } from '../item/PotService';
 import { DungeonGenerator, DEFAULT_GENERATOR_CONFIG, type GeneratorConfig } from '../map/DungeonGenerator';
@@ -211,6 +211,8 @@ export class GameSession {
       case 'tactic':
         this.state.tactic = cmd.tactic;
         return { consumedTurn: false, message: `作戦を「${TACTIC_LABEL[cmd.tactic]}」にした。` };
+      case 'sort':
+        return this.cmdSort();
       case 'potInsert':
         return this.cmdPotInsert(cmd.potIndex, cmd.itemIndex);
       case 'potTakeOut':
@@ -340,6 +342,22 @@ export class GameSession {
     this.effects.applySelf(effect);
     if (this.state.status === 'escaped') this.shops.settleOnLeave(this.state);
     return { consumedTurn: true };
+  }
+
+  /** 整頓: 装備中 → 種類順 → 名前 → 修正値の降順 */
+  private cmdSort(): CommandResult {
+    const p = this.state.player;
+    p.inventory.sort((a, b) => {
+      const ea = p.isEquipped(a) ? 0 : 1;
+      const eb = p.isEquipped(b) ? 0 : 1;
+      if (ea !== eb) return ea - eb;
+      const ca = CATEGORY_ORDER.indexOf(a.def.category);
+      const cb = CATEGORY_ORDER.indexOf(b.def.category);
+      if (ca !== cb) return ca - cb;
+      if (a.def.name !== b.def.name) return a.def.name < b.def.name ? -1 : 1;
+      return b.plus - a.plus;
+    });
+    return { consumedTurn: false, message: '持ち物を整頓した。' };
   }
 
   private cmdSell(index: number): CommandResult {

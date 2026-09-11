@@ -19,6 +19,7 @@ export type Command =
   | { readonly type: 'throw'; readonly index: number }
   | { readonly type: 'sell'; readonly index: number }
   | { readonly type: 'tactic'; readonly tactic: Tactic }
+  | { readonly type: 'sort' }
   | { readonly type: 'potInsert'; readonly potIndex: number; readonly itemIndex: number }
   | { readonly type: 'potTakeOut'; readonly potIndex: number; readonly contentIndex: number };
 

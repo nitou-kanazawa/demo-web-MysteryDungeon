@@ -37,4 +37,12 @@ export class Inventory {
   has(item: ItemInstance): boolean {
     return this.slots.includes(item);
   }
+
+  /** 安定ソート（比較関数はドメイン側で用意する） */
+  sort(compare: (a: ItemInstance, b: ItemInstance) => number): void {
+    const indexed = this.slots.map((item, i) => ({ item, i }));
+    indexed.sort((x, y) => compare(x.item, y.item) || x.i - y.i);
+    this.slots.length = 0;
+    for (const { item } of indexed) this.slots.push(item);
+  }
 }

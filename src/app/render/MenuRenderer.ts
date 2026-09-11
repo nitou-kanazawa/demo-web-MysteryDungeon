@@ -46,8 +46,16 @@ export class MenuRenderer {
     const w = 380;
     const h = 40 + Math.max(items.length, 1) * 22 + 24;
     this.panel(g, x, y, w, h, title ?? `持ち物 (${items.length}/${p.inventory.capacity})`);
+    if (!title) {
+      g.font = `12px ${FONT}`;
+      g.fillStyle = '#6b7280';
+      g.textAlign = 'right';
+      g.textBaseline = 'top';
+      g.fillText('R 整頓', x + w - 16, y + 14);
+    }
     g.font = `14px ${FONT}`;
     g.textBaseline = 'top';
+    g.textAlign = 'left';
     if (items.length === 0) {
       g.fillStyle = '#9ca3af';
       g.fillText('何も持っていない', x + 30, y + 42);
@@ -146,10 +154,11 @@ export class MenuRenderer {
   private drawHelp(g: CanvasRenderingContext2D, width: number, height: number): void {
     const lines = [
       '移動      : 矢印 / WASD（直交）  Q E Z C（斜め）  テンキー可',
+      'ダッシュ  : Shift + 方向。通路は一本道を追従し、分岐・出入口・敵・拾い物で止まる（任意のキーで中断）',
       '足踏み    : . または Space',
       '拾う      : , または G（移動時は自動で拾う）',
       '階段を降りる: 階段の上で Enter',
-      '持ち物    : I または Tab  → Enter で「使う／装備／投げる／置く／壺」',
+      '持ち物    : I または Tab  → Enter で「使う／装備／投げる／置く／壺」、R で整頓',
       '投げる・杖: 最後に移動した向きへ飛ぶ',
       '壺        : 「入れる」で他の持ち物を選択、「出す」で中身を取り出す',
       '錬金の壺  : レシピ通りの素材を入れると、時間経過で新しいアイテムに',
