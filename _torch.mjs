@@ -1,0 +1,16 @@
+import { chromium } from 'playwright-core';
+const out = process.argv[2];
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', headless: true });
+const page = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+const errors = [];
+page.on('pageerror', (e) => errors.push(String(e)));
+await page.goto('http://localhost:4173/?seed=4343');
+await page.waitForTimeout(400);
+await page.evaluate(() => window.app.startSortie(4343));
+await page.waitForTimeout(3000);
+await page.evaluate(() => { const s = window.app.scene.game.session; Object.assign(s.floors.config, { alternativeThemes: false, mazeChance: 0, bigRoomChance: 0, fogChance: 0 }); s.state.floor = 4; s.floors.build(s.state, s.rng); s.visuals.drain(); window.app.scene.game.markCurrentTheme(); s.state.player.torch = 0; });
+await page.waitForTimeout(300);
+await page.screenshot({ path: `${out}/t1_torch_out_4f.png` });
+const vis = await page.evaluate(() => { const st = window.app.scene.game.session.state; const room = st.map.roomAt(st.player.pos); let n = 0, all = 0; for (const t of room.tiles()) { all++; if (st.visibility.isVisible(t)) n++; } return { visibleInRoom: n, roomTiles: all, sight: st.visibility.sightRadius }; });
+console.log(vis, 'errors', errors);
+await browser.close();

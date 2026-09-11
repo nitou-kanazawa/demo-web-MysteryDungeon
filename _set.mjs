@@ -1,0 +1,13 @@
+import { chromium } from 'playwright-core';
+const out = process.argv[2];
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', headless: true });
+const page = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+await page.goto('http://localhost:4173/?seed=556');
+await page.waitForTimeout(500);
+await page.evaluate(() => { window.app.baseCtrl.hero.x = 250; });
+await page.keyboard.press('ArrowUp'); await page.waitForTimeout(100);
+await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter'); await page.waitForTimeout(150);
+await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter'); await page.waitForTimeout(200);
+console.log(await page.evaluate(() => JSON.stringify(window.app.baseCtrl.mode) + ' sfx=' + JSON.parse(localStorage.getItem('mysterydungeon.settings.v1')).sfx));
+await page.screenshot({ path: `${out}/s1_settings.png` });
+await browser.close();
