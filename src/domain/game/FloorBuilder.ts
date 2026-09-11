@@ -15,7 +15,7 @@ import { Npc } from '../entity/Npc';
 import { BLACKSMITH_DEF } from '../data/npcs';
 import { TRAP_KINDS } from './TileFeature';
 import { findItemDropTile } from './Placement';
-import { CollapseEvent, TideEvent } from './FloorEvent';
+import { CollapseEvent, RefreezeEvent, TideEvent } from './FloorEvent';
 import type { TileFeature } from './TileFeature';
 import { DIR_VEC, addVec } from '../core/Vec2';
 import type { Room } from '../map/Room';
@@ -36,9 +36,12 @@ export class FloorBuilder {
     state.theme = themeForFloor(state.floor);
     const map = this.generator.generate(rng, state.theme.solid);
     state.replaceMap(map);
+    if (state.theme.id === 'ice') this.freezeRooms(state, rng);
+    if (state.theme.id === 'volcano') this.pourLava(state, rng);
 
     const startRoom = rng.pick(map.rooms);
     state.player.pos = this.randomFloorIn(state, startRoom.x, startRoom.right, startRoom.y, startRoom.bottom, rng);
+    if (map.get(state.player.pos) === TileType.Lava) map.set(state.player.pos, TileType.Floor);
 
     for (const ally of state.allies) {
       ally.pos = findFreeTileNear(state, state.player.pos, 6) ?? state.player.pos;
@@ -68,6 +71,7 @@ export class FloorBuilder {
     if (state.floor >= 2) this.placeFeatures(state, rng, startRoom);
     if (state.theme.id === 'water') state.events.push(new TideEvent(state));
     if (state.theme.id === 'sky') state.events.push(new CollapseEvent());
+    if (state.theme.id === 'ice') state.events.push(new RefreezeEvent());
     if (state.floor >= 2 && rng.chance(this.config.blacksmithChance)) this.placeBlacksmith(state, rng, startRoom);
     if (state.floor >= 4 && stairsRoom && stairsRoom !== startRoom && rng.chance(this.config.guardianChance)) {
       this.placeGuardian(state, rng, stairsRoom);
@@ -88,6 +92,33 @@ export class FloorBuilder {
       );
       if (tiles.length === 0) continue;
       state.placeFeature(rng.pick(tiles), { kind: 'trap', trap: rng.pick(TRAP_KINDS), hidden: true });
+    }
+  }
+
+  /** 氷の洞窟: 部屋の床の 75% を氷にする（残りは滑り止めの岩床） */
+  private freezeRooms(state: GameState, rng: IRng): void {
+    for (const room of state.map.rooms) {
+      for (const t of room.tiles()) {
+        if (state.map.get(t) === TileType.Floor && rng.chance(0.75)) state.map.set(t, TileType.Ice);
+      }
+    }
+  }
+
+  /** 火山: 各部屋に溶岩だまりを 1〜2 つ（楕円）。階段の上には作らない */
+  private pourLava(state: GameState, rng: IRng): void {
+    for (const room of state.map.rooms) {
+      const pools = rng.int(1, 2);
+      for (let i = 0; i < pools; i++) {
+        const cx = rng.int(room.x, room.right);
+        const cy = rng.int(room.y, room.bottom);
+        const rx = rng.int(1, 3);
+        const ry = rng.int(1, 2);
+        for (const t of room.tiles()) {
+          const dx = (t.x - cx) / (rx + 0.5);
+          const dy = (t.y - cy) / (ry + 0.5);
+          if (dx * dx + dy * dy <= 1 && state.map.get(t) === TileType.Floor) state.map.set(t, TileType.Lava);
+        }
+      }
     }
   }
 
@@ -177,7 +208,7 @@ export class FloorBuilder {
   /** 指定位置に階層相応の敵を 1 体（召喚の罠など） */
   spawnMonsterAt(state: GameState, rng: IRng, p: Vec2): Monster | undefined {
     const candidates = this.monsterDefs.filter((d) => state.floor >= d.minFloor && state.floor <= d.maxFloor);
-    if (candidates.length === 0 || state.isOccupied(p)) return undefined;
+    if (candidates.length === 0 || state.isOccupied(p) || state.map.get(p) === TileType.Lava) return undefined;
     const m = new Monster(this.ids.generate(), rng.pick(candidates), p);
     state.monsters.push(m);
     return m;
@@ -218,7 +249,7 @@ export class FloorBuilder {
     const room = rng.pick(rooms);
     for (let attempt = 0; attempt < 20; attempt++) {
       const p = this.randomFloorIn(state, room.x, room.right, room.y, room.bottom, rng);
-      if (!state.isOccupied(p) && !eqVec(p, state.player.pos)) {
+      if (!state.isOccupied(p) && !eqVec(p, state.player.pos) && state.map.get(p) !== TileType.Lava) {
         const m = new Monster(this.ids.generate(), def, p);
         state.monsters.push(m);
         return m;
@@ -235,7 +266,7 @@ export class FloorBuilder {
     const room = rng.pick(rooms);
     for (let attempt = 0; attempt < 20; attempt++) {
       const p = this.randomFloorIn(state, room.x, room.right, room.y, room.bottom, rng);
-      if (state.itemAt(p) || state.map.get(p) === TileType.Stairs) continue;
+      if (state.itemAt(p) || state.map.get(p) === TileType.Stairs || state.map.get(p) === TileType.Lava) continue;
       const item = this.factory.create(entry.defId, rng);
       state.placeItem(p, item);
       return;

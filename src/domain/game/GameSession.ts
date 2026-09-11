@@ -37,7 +37,7 @@ import { SmithService } from './SmithService';
 import { Shopkeeper } from '../entity/Shopkeeper';
 import { Npc } from '../entity/Npc';
 import { chebyshev } from '../core/Vec2';
-import { CollapseEvent } from './FloorEvent';
+import { CollapseEvent, RefreezeEvent } from './FloorEvent';
 import type { ItemSnapshot } from '../item/ItemSnapshot';
 
 export interface SessionOptions {
@@ -116,7 +116,9 @@ export class GameSession {
 
     this.actions = new ActionExecutor(this.state, this.rng, this.log, this.ids, this.config, this.shops);
     this.effects = new EffectResolver(this.state, this.rng, this.log, this.actions);
-    this.skills = new SkillExecutor(this.state, this.rng, this.log, this.actions);
+    this.skills = new SkillExecutor(this.state, this.rng, this.log, this.actions, (p) => {
+      for (const e of this.state.events) if (e instanceof RefreezeEvent) e.markMelted(this.state, p);
+    });
     this.smith = new SmithService(this.log);
     this.features = new FeatureService(this.state, this.rng, this.log, this.actions, this.ids, this.floors, {
       fallToNextFloor: () => this.fallToNextFloor(),
@@ -287,6 +289,7 @@ export class GameSession {
     }
     const from = p.pos;
     p.pos = to;
+    this.actions.slide(p, dir);
     this.afterPlayerMoved(from);
     return { consumedTurn: true };
   }
@@ -495,6 +498,10 @@ export class GameSession {
       this.log.push(`${item.displayName}は${where}…`);
       return { consumedTurn: true };
     }
+    if (this.state.map.get(last) === TileType.Lava) {
+      this.log.push(`${item.displayName}は溶岩で燃え尽きた…`);
+      return { consumedTurn: true };
+    }
     if (item.isPot) {
       this.log.push('壺が割れた！');
       for (const c of item.contents) {
@@ -607,6 +614,14 @@ export class GameSession {
 
     if (s.turn % this.config.respawnInterval === 0 && s.monsters.length < 10) {
       this.floors.spawnMonster(s, this.rng, true);
+    }
+
+    // 溶岩の上にいる者は焼ける
+    for (const a of [...s.actors]) {
+      if (a.isAlive && a.faction !== 'neutral' && s.map.get(a.pos) === TileType.Lava) {
+        this.log.push(`${a.name}は溶岩で焼けた！`);
+        this.actions.dealDamage(undefined, a, 5);
+      }
     }
 
     for (const e of s.events) e.tick({ state: s, log: this.log });

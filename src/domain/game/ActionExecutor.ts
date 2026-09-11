@@ -10,6 +10,7 @@ import { HIT_CHANCE, calcDamage } from './Combat';
 import type { GameState } from './GameState';
 import type { MessageLog } from './MessageLog';
 import { findFreeTileNear } from './Placement';
+import { TileType } from '../map/Tile';
 import { Shopkeeper } from '../entity/Shopkeeper';
 import { Npc } from '../entity/Npc';
 import type { ShopService } from './ShopService';
@@ -47,8 +48,23 @@ export class ActionExecutor {
     const to = addVec(actor.pos, DIR_VEC[dir]);
     if (this.state.isOccupied(to)) return false;
     actor.pos = to;
+    this.slide(actor, dir);
     this.onMoved?.(actor);
     return true;
+  }
+
+  /** 氷の上なら同じ方向へ止まるまで滑る。滑ったマス数を返す */
+  slide(actor: Actor, dir: Direction): number {
+    let n = 0;
+    while (this.state.map.get(actor.pos) === TileType.Ice && n < 30) {
+      if (!this.state.map.canStep(actor.pos, dir)) break;
+      const next = addVec(actor.pos, DIR_VEC[dir]);
+      if (this.state.isOccupied(next) || this.state.featureAt(next)) break;
+      actor.pos = next;
+      n++;
+    }
+    if (n > 0) this.log.push(`${actor.name}は氷の上を滑った！`);
+    return n;
   }
 
   /** 通常攻撃。命中判定 → ダメージ → 撃破処理 */

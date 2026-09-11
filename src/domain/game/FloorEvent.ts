@@ -129,4 +129,32 @@ export class CollapseEvent implements FloorEvent {
   }
 }
 
+/** 溶けた氷（水）が一定ターン後に再び凍る */
+export class RefreezeEvent implements FloorEvent {
+  readonly id = 'refreeze';
+  private readonly melted = new Map<string, { p: Vec2; at: number }>();
+
+  constructor(private readonly after = 20) {}
+
+  /** 氷が溶けたときに呼ぶ */
+  markMelted(state: GameState, p: Vec2): void {
+    this.melted.set(`${p.x},${p.y}`, { p, at: state.turn + this.after });
+  }
+
+  get pendingCount(): number {
+    return this.melted.size;
+  }
+
+  tick({ state, log }: FloorEventContext): void {
+    for (const [k, m] of [...this.melted]) {
+      if (state.turn < m.at) continue;
+      this.melted.delete(k);
+      if (state.map.get(m.p) === TileType.Water) {
+        state.map.set(m.p, TileType.Ice);
+        if (state.visibility.isVisible(m.p)) log.push('水面が再び凍った。');
+      }
+    }
+  }
+}
+
 export const isFloorEventActor = (a: Actor): boolean => a.isAlive;

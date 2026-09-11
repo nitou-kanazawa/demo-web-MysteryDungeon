@@ -17,7 +17,7 @@ function toFloor(seed: number, floor: number) {
 
 describe('満潮（地底湖）', () => {
   it('地底湖には TideEvent が登録され、周期で橋が沈んで戻る', () => {
-    const s = toFloor(200, 4);
+    const s = toFloor(200, 3);
     const st = s.state;
     const tide = st.events.find((e) => e instanceof TideEvent) as TideEvent;
     expect(tide).toBeDefined();
@@ -41,7 +41,7 @@ describe('満潮（地底湖）', () => {
   });
 
   it('橋の上にいると岸へ退避させられる', () => {
-    const s = toFloor(201, 4);
+    const s = toFloor(201, 3);
     const st = s.state;
     const bridge = [...st.map.walkableTiles()].find((p) => st.map.get(p) === TileType.Corridor)!;
     st.player.pos = bridge;
@@ -56,7 +56,7 @@ describe('満潮（地底湖）', () => {
 
 describe('崩落（天空）', () => {
   it('通った回廊にひびが入り、数ターン後に崩れて空になり、しばらくして戻る', () => {
-    const s = toFloor(202, 7);
+    const s = toFloor(202, 9);
     const st = s.state;
     const collapse = st.events.find((e) => e instanceof CollapseEvent) as CollapseEvent;
     expect(collapse).toBeDefined();
@@ -80,7 +80,7 @@ describe('崩落（天空）', () => {
   });
 
   it('移動コマンドで回廊を踏むと自動でひびが入る', () => {
-    const s = toFloor(203, 7);
+    const s = toFloor(203, 9);
     const st = s.state;
     const corridor = [...st.map.walkableTiles()].find((p) => st.map.get(p) === TileType.Corridor)!;
     // 回廊の隣の歩けるマスから踏み込む

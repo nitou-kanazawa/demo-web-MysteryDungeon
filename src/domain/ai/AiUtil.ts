@@ -4,6 +4,7 @@ import type { Actor } from '../entity/Actor';
 import { firstStepToward } from '../map/Pathfinding';
 import type { GameState } from '../game/GameState';
 import type { AiAction } from './AiAction';
+import { TileType } from '../map/Tile';
 import type { SkillDef } from '../data/skills';
 
 /** 隣接していて、角抜けせずに攻撃できる相手への方向を返す */
@@ -17,8 +18,9 @@ export function adjacentAttackDir(state: GameState, self: Actor, target: Actor):
 /** 他アクターを避けて target へ向かう一歩 */
 export function stepToward(state: GameState, self: Actor, target: Vec2): Direction | undefined {
   const blocked = (p: Vec2): boolean => {
+    if (state.map.get(p) === TileType.Lava) return true;
     const a = state.actorAt(p);
-    return a !== undefined && a !== self;
+    return (a !== undefined && a !== self) || state.featureAt(p)?.kind === 'boulder';
   };
   const dir = firstStepToward(state.map, self.pos, target, blocked);
   if (!dir) return undefined;
@@ -29,7 +31,8 @@ export function stepToward(state: GameState, self: Actor, target: Vec2): Directi
 export function randomStep(state: GameState, self: Actor, rng: IRng): Direction | undefined {
   const candidates = DIRECTIONS.filter((d) => {
     if (!state.map.canStep(self.pos, d)) return false;
-    return !state.isOccupied(addVec(self.pos, DIR_VEC[d]));
+    const p = addVec(self.pos, DIR_VEC[d]);
+    return !state.isOccupied(p) && state.map.get(p) !== TileType.Lava;
   });
   return candidates.length > 0 ? rng.pick(candidates) : undefined;
 }

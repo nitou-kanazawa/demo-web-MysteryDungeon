@@ -167,3 +167,83 @@ export const THEME_TILES = {
   water: { solid: [water(0), water(1)], floor: [sand(0), sand(1)], corridor: bridge(), edge: shoreEdge() },
   sky: { solid: [sky(0), sky(1)], floor: [grass(0), grass(1)], corridor: walkway(), edge: cliffFace() },
 } as const;
+
+// ---------------------------------------------------------------- 氷・火山
+
+/** 氷の床（滑る） */
+function ice(variant: 0 | 1): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'i');
+  c.rect(0, 0, 32, 1, 'm').rect(0, 0, 1, 32, 'm');
+  if (variant === 0) c.line(4, 20, 14, 8, 'k').line(14, 8, 20, 12, 'k').stamp(24, 22, ['h', 'h']);
+  else c.line(18, 26, 26, 6, 'k').stamp(5, 5, ['hh', 'h']).stamp(9, 18, ['k', '.k']);
+  c.stamp(2, 26, ['hhh']).stamp(26, 3, ['hh']);
+  return c.toSprite({ i: '#a5d8ff', m: '#6fb3e8', k: '#e0f2fe', h: '#ffffff' });
+}
+
+/** 氷の壁 */
+function iceWall(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'w');
+  for (const y of [7, 15, 23, 31]) c.rect(0, y, 32, 1, 'm');
+  for (let row = 0; row < 4; row++) {
+    const off = row % 2 === 0 ? 0 : 8;
+    for (let x = off; x < 32; x += 16) c.rect(x, row * 8, 1, 7, 'm').rect(x + 1, row * 8, 14, 1, 'h');
+  }
+  c.stamp(6, 4, ['h']).stamp(20, 19, ['h', 'h']);
+  return c.toSprite({ w: '#5b8fc9', m: '#2f5b8f', h: '#9ec9f0' });
+}
+
+/** 雪の通路 */
+function snowPath(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 's');
+  c.stamp(5, 6, ['d', '.d']).stamp(18, 11, ['dd']).stamp(9, 22, ['d']).stamp(24, 25, ['d', 'd']);
+  c.stamp(14, 3, ['w']).stamp(27, 16, ['w']).stamp(3, 27, ['w']);
+  return c.toSprite({ s: '#d9e8f5', d: '#b7cbe0', w: '#ffffff' });
+}
+
+/** 溶岩（2 フレーム） */
+function lava(frame: 0 | 1): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'l');
+  const off = frame === 0 ? 0 : 5;
+  for (let y = 2; y < 32; y += 8) {
+    c.ellipse((10 + off) % 32, y + 2, 5, 2, 'b');
+    c.ellipse((24 + off) % 32, y + 5, 4, 2, 'b');
+    c.stamp((16 + off) % 32, y, ['d']);
+  }
+  c.stamp(6, 14, ['y']).stamp(22, 27, ['y']).stamp(28, 9, ['y']);
+  return c.toSprite({ l: '#d9480f', b: '#f97316', d: '#7c2d12', y: '#fde68a' });
+}
+
+/** 火山の床（黒い玄武岩） */
+function basalt(variant: 0 | 1): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'b');
+  c.rect(0, 0, 32, 1, 'm').rect(0, 0, 1, 32, 'm');
+  if (variant === 0) c.rect(0, 16, 32, 1, 'm').rect(16, 0, 1, 16, 'm').stamp(6, 20, ['r', '.r']);
+  else c.rect(11, 0, 1, 32, 'm').rect(11, 20, 21, 1, 'm').stamp(22, 6, ['rr']);
+  c.stamp(26, 26, ['g']).stamp(3, 8, ['g']);
+  return c.toSprite({ b: '#3b3030', m: '#1c1414', r: '#7c2d12', g: '#4a3c3c' });
+}
+
+/** 火山の壁（赤黒い岩） */
+function volcanoWall(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'w');
+  for (const y of [7, 15, 23, 31]) c.rect(0, y, 32, 1, 'm');
+  for (let row = 0; row < 4; row++) {
+    const off = row % 2 === 0 ? 0 : 8;
+    for (let x = off; x < 32; x += 16) c.rect(x, row * 8, 1, 7, 'm').rect(x + 1, row * 8, 14, 1, 'h');
+  }
+  c.stamp(5, 3, ['r']).stamp(21, 18, ['r', 'r']);
+  return c.toSprite({ w: '#5a3232', m: '#2a1414', h: '#7a4848', r: '#b91c1c' });
+}
+
+/** 火山の通路 */
+function ashPath(): PixelSprite {
+  const c = new PixelCanvas().rect(0, 0, 32, 32, 'a');
+  c.stamp(4, 5, ['dd', '.d']).stamp(20, 9, ['ddd']).stamp(10, 19, ['d', 'dd']).stamp(24, 24, ['dd']);
+  c.stamp(14, 3, ['r']).stamp(27, 16, ['r']);
+  return c.toSprite({ a: '#4a3a34', d: '#2e2320', r: '#9a3412' });
+}
+
+export const THEME_TILES_EXTRA = {
+  ice: { wall: iceWall(), rock: rock(), floor: [ice(0), ice(1)], corridor: snowPath(), ice: [ice(0), ice(1)] },
+  volcano: { wall: volcanoWall(), rock: rock(), floor: [basalt(0), basalt(1)], corridor: ashPath(), lava: [lava(0), lava(1)] },
+} as const;

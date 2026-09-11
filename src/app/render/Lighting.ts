@@ -57,6 +57,23 @@ export class Lighting {
     og.fillStyle = torch;
     og.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
 
+    // 溶岩は光源
+    if (state.theme.id === 'volcano') {
+      for (let y = 0; y < map.height; y++) {
+        for (let x = 0; x < map.width; x++) {
+          if (map.get({ x, y }) !== 7 || !visibility.isVisible({ x, y })) continue;
+          const lx = (x + 0.5) * TILE;
+          const ly = (y + 0.5) * TILE;
+          const lr = TILE * 1.6;
+          const lg = og.createRadialGradient(lx, ly, 0, lx, ly, lr);
+          lg.addColorStop(0, 'rgba(0,0,0,0.9)');
+          lg.addColorStop(1, 'rgba(0,0,0,0)');
+          og.fillStyle = lg;
+          og.fillRect(lx - lr, ly - lr, lr * 2, lr * 2);
+        }
+      }
+    }
+
     const s = map.stairs;
     const sx = (s.x + 0.5) * TILE;
     const sy = (s.y + 0.5) * TILE;

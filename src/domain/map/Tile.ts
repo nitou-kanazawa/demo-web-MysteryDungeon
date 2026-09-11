@@ -8,10 +8,17 @@ export enum TileType {
   Water = 4,
   /** 空（奈落）: 歩けないが投擲物などは通る */
   Void = 5,
+  /** 氷: 歩けるが止まるまで滑る。炎で溶けて水になる */
+  Ice = 6,
+  /** 溶岩: 歩けるがターン終了時にダメージ。投げ物は燃える */
+  Lava = 7,
 }
 
 export const isWalkableTile = (t: TileType): boolean =>
-  t === TileType.Floor || t === TileType.Corridor || t === TileType.Stairs;
+  t === TileType.Floor || t === TileType.Corridor || t === TileType.Stairs || t === TileType.Ice || t === TileType.Lava;
+
+/** 部屋の床として扱うタイル（罠や物を置ける） */
+export const isRoomFloor = (t: TileType): boolean => t === TileType.Floor || t === TileType.Ice;
 
 /** 投擲物・魔法弾・ブレスを遮るか */
 export const blocksProjectile = (t: TileType): boolean => t === TileType.Wall;

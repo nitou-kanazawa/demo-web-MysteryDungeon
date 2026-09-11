@@ -4,7 +4,7 @@ import type { Room } from '../../domain/map/Room';
 import type { DungeonTheme } from '../../domain/data/themes';
 import { TILE, hash2 } from './RenderConfig';
 import { paintSprite, type PixelSprite } from './sprites/PixelSprite';
-import { THEME_TILES, TILE_SPRITES } from './sprites/tileSprites';
+import { THEME_TILES, THEME_TILES_EXTRA, TILE_SPRITES } from './sprites/tileSprites';
 
 /**
  * 地形の見た目をオフスクリーンに描画してキャッシュする。
@@ -46,18 +46,29 @@ export class TileArt {
 
   private spriteAt(map: DungeonMap, theme: DungeonTheme, x: number, y: number, frame: 0 | 1): PixelSprite {
     const t = map.get({ x, y });
-    const set = theme === 'cave' ? undefined : THEME_TILES[theme];
     const variant = hash2(x, y, 2) < 0.5 ? 0 : 1;
+    const wet = theme === 'water' || theme === 'sky' ? THEME_TILES[theme] : undefined;
+    const extra = theme === 'ice' || theme === 'volcano' ? THEME_TILES_EXTRA[theme] : undefined;
     switch (t) {
-      case TileType.Wall:
-        return this.nearFloor(map, x, y) ? TILE_SPRITES.wall : TILE_SPRITES.rock;
+      case TileType.Wall: {
+        const near = this.nearFloor(map, x, y);
+        if (extra) return near ? extra.wall : extra.rock;
+        return near ? TILE_SPRITES.wall : TILE_SPRITES.rock;
+      }
       case TileType.Water:
+        return wet ? wet.solid[frame] : THEME_TILES.water.solid[frame];
       case TileType.Void:
-        return set ? set.solid[frame] : TILE_SPRITES.rock;
+        return THEME_TILES.sky.solid[frame];
+      case TileType.Ice:
+        return THEME_TILES_EXTRA.ice.ice[variant];
+      case TileType.Lava:
+        return THEME_TILES_EXTRA.volcano.lava[frame];
       case TileType.Floor:
-        return set ? set.floor[variant] : variant === 0 ? TILE_SPRITES.floorA : TILE_SPRITES.floorB;
+        if (wet) return wet.floor[variant];
+        if (extra) return extra.floor[variant];
+        return variant === 0 ? TILE_SPRITES.floorA : TILE_SPRITES.floorB;
       case TileType.Corridor:
-        return set ? set.corridor : TILE_SPRITES.corridor;
+        return wet?.corridor ?? extra?.corridor ?? TILE_SPRITES.corridor;
       case TileType.Stairs:
         return TILE_SPRITES.stairs;
     }
@@ -76,7 +87,7 @@ export class TileArt {
   private drawEdge(g: CanvasRenderingContext2D, map: DungeonMap, theme: DungeonTheme, x: number, y: number, scale: number): void {
     const t = map.get({ x, y });
     const below = map.get({ x, y: y + 1 });
-    if (theme === 'cave') {
+    if (theme === 'cave' || theme === 'ice' || theme === 'volcano') {
       if (t === TileType.Wall && map.isWalkable({ x, y: y + 1 })) {
         const px = x * TILE;
         const py = (y + 1) * TILE;

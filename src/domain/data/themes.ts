@@ -1,6 +1,6 @@
 import { TileType } from '../map/Tile';
 
-export type DungeonTheme = 'cave' | 'water' | 'sky';
+export type DungeonTheme = 'cave' | 'water' | 'ice' | 'volcano' | 'sky';
 
 /** ライティングの見え方（0..1）。値が大きいほど明るい */
 export interface LightingProfile {
@@ -30,7 +30,7 @@ export const THEME_DEFS: readonly ThemeDef[] = [
     id: 'cave',
     name: '石の洞窟',
     minFloor: 1,
-    maxFloor: 3,
+    maxFloor: 2,
     solid: TileType.Wall,
     description: '岩壁に囲まれた洞窟。松明の光だけが頼り。',
     lighting: { explored: 0.22, visible: 0.5, torchRadius: 7, warm: 1 },
@@ -38,19 +38,37 @@ export const THEME_DEFS: readonly ThemeDef[] = [
   {
     id: 'water',
     name: '地底湖',
-    minFloor: 4,
-    maxFloor: 6,
+    minFloor: 3,
+    maxFloor: 4,
     solid: TileType.Water,
-    description: '部屋は島、通路は橋。水の上を投げ物や魔法弾が飛び越える。',
+    description: '部屋は島、通路は橋。水の上を投げ物や魔法弾が飛び越える。潮が満ちると橋が沈む。',
     lighting: { explored: 0.28, visible: 0.6, torchRadius: 8, warm: 0.6 },
+  },
+  {
+    id: 'ice',
+    name: '氷の洞窟',
+    minFloor: 5,
+    maxFloor: 6,
+    solid: TileType.Wall,
+    description: '床は氷。乗ると止まるまで滑る。炎で溶けた氷は水になる。',
+    lighting: { explored: 0.35, visible: 0.7, torchRadius: 8, warm: 0.3 },
+  },
+  {
+    id: 'volcano',
+    name: '火山',
+    minFloor: 7,
+    maxFloor: 8,
+    solid: TileType.Wall,
+    description: '溶岩が流れる灼熱の洞窟。溶岩の上は歩けるが焼ける。',
+    lighting: { explored: 0.2, visible: 0.45, torchRadius: 6, warm: 1.2 },
   },
   {
     id: 'sky',
     name: '天空の浮島',
-    minFloor: 7,
+    minFloor: 9,
     maxFloor: 99,
     solid: TileType.Void,
-    description: '雲の上に浮かぶ島々。落としたものは二度と戻らない。',
+    description: '雲の上に浮かぶ島々。落としたものは二度と戻らない。歩いた回廊は崩れる。',
     lighting: { explored: 0.55, visible: 0.9, torchRadius: 10, warm: 0.2 },
   },
 ];

@@ -78,6 +78,9 @@ export class FeatureService {
     if (tile === TileType.Water) {
       this.state.map.set(beyond, TileType.Floor);
       this.log.push('岩が水に沈み、足場になった！');
+    } else if (tile === TileType.Lava) {
+      this.state.map.set(beyond, TileType.Floor);
+      this.log.push('岩が溶岩を塞いで冷え固まった！');
     } else if (tile === TileType.Void) {
       this.log.push('岩は空の彼方へ落ちていった。');
     } else {

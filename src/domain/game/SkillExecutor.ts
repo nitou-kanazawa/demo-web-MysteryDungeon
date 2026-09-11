@@ -1,5 +1,6 @@
 import type { IRng } from '../core/Rng';
-import { DIR_VEC, addVec, dirFromDelta } from '../core/Vec2';
+import { DIR_VEC, addVec, dirFromDelta, type Vec2 } from '../core/Vec2';
+import { TileType } from '../map/Tile';
 import type { SkillDef } from '../data/skills';
 import type { Actor } from '../entity/Actor';
 import type { ActionExecutor } from './ActionExecutor';
@@ -20,6 +21,8 @@ export class SkillExecutor {
     private readonly rng: IRng,
     private readonly log: MessageLog,
     private readonly actions: ActionExecutor,
+    /** 炎で氷が溶けたときに呼ばれる（再凍結の予約用） */
+    private readonly onIceMelted: ((p: Vec2) => void) | undefined = undefined,
   ) {}
 
   use(user: Actor, skill: SkillDef, target: Actor): void {
@@ -36,10 +39,16 @@ export class SkillExecutor {
         if (!dir) break;
         let p = user.pos;
         let hit = 0;
+        let melted = 0;
         for (let i = 0; i < skill.range; i++) {
           const next = addVec(p, DIR_VEC[dir]);
           if (!this.state.map.passesProjectile(next)) break;
           p = next;
+          if (this.state.map.get(p) === TileType.Ice && !this.state.isOccupied(p)) {
+            this.state.map.set(p, TileType.Water);
+            this.onIceMelted?.(p);
+            melted++;
+          }
           const a = this.state.actorAt(p);
           if (a && isHostile(user, a)) {
             this.actions.dealDamage(user, a, skill.power);
@@ -47,6 +56,7 @@ export class SkillExecutor {
           }
         }
         if (hit === 0) this.log.push('炎は誰にも当たらなかった。');
+        if (melted > 0) this.log.push('炎で氷が溶けて水になった！');
         break;
       }
       case 'drain': {

@@ -13,10 +13,14 @@ import { DEFAULT_FLOOR_CONFIG } from '../src/domain/data/spawnTables';
 describe('ダンジョンテーマ', () => {
   it('フロア帯でテーマが決まる', () => {
     expect(themeForFloor(1).id).toBe('cave');
-    expect(themeForFloor(3).id).toBe('cave');
+    expect(themeForFloor(2).id).toBe('cave');
+    expect(themeForFloor(3).id).toBe('water');
     expect(themeForFloor(4).id).toBe('water');
-    expect(themeForFloor(6).id).toBe('water');
-    expect(themeForFloor(7).id).toBe('sky');
+    expect(themeForFloor(5).id).toBe('ice');
+    expect(themeForFloor(6).id).toBe('ice');
+    expect(themeForFloor(7).id).toBe('volcano');
+    expect(themeForFloor(8).id).toBe('volcano');
+    expect(themeForFloor(9).id).toBe('sky');
     expect(themeForFloor(10).id).toBe('sky');
   });
 
@@ -36,13 +40,13 @@ describe('ダンジョンテーマ', () => {
     }
   });
 
-  it('4F に降りると地底湖になり、水タイルで構成される', () => {
+  it('3F に降りると地底湖になり、水タイルで構成される', () => {
     const s = new GameSession(50);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       s.state.player.pos = s.state.map.stairs;
       s.execute({ type: 'descend' });
     }
-    expect(s.state.floor).toBe(4);
+    expect(s.state.floor).toBe(3);
     expect(s.state.theme.id).toBe('water');
     expect(s.state.map.get({ x: 0, y: 0 })).toBe(TileType.Water);
     expect(s.log.all.some((m) => m.includes('地底湖'))).toBe(true);

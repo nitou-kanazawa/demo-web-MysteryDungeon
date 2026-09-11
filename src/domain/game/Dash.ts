@@ -50,6 +50,10 @@ export class DashRunner {
       return false;
     }
     const ahead = addVec(from, DIR_VEC[next]);
+    if (st.map.get(ahead) === TileType.Lava || st.map.get(ahead) === TileType.Ice) {
+      this.stop();
+      return false;
+    }
     const feature = st.featureAt(ahead);
     if (feature && !(feature.kind === 'trap' && feature.hidden)) {
       // 見えている罠・跳ね床などの手前で止まる
